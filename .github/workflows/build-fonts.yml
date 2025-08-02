@@ -34,17 +34,38 @@ on:
         type: boolean
 
 jobs:
-  build:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      build_types: ${{ steps.prepare_matrix.outputs.build_types }}
+      platforms: ${{ steps.prepare_matrix.outputs.platforms }}
+    steps:
+    - name: Prepare build matrix
+      id: prepare_matrix
+      run: |
+        if [ "${{ github.event.inputs.build_type }}" = "all" ] || [ -z "${{ github.event.inputs.build_type }}" ]; then
+          echo 'build_types=["complete", "mono", "propo"]' >> $GITHUB_OUTPUT
+        else
+          echo 'build_types=["${{ github.event.inputs.build_type }}"]' >> $GITHUB_OUTPUT
+        fi
+        
+        # For release events, build on all platforms; otherwise just Ubuntu
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo 'platforms=["ubuntu-latest", "windows-latest", "macos-latest"]' >> $GITHUB_OUTPUT
+        else
+          echo 'platforms=["ubuntu-latest"]' >> $GITHUB_OUTPUT
+        fi
+
+  build:
+    runs-on: ${{ matrix.os }}
+    needs: prepare
     strategy:
       matrix:
-        build_type: 
-          - ${{ github.event.inputs.build_type == 'all' && 'complete' || github.event.inputs.build_type || 'complete' }}
-          - ${{ github.event.inputs.build_type == 'all' && 'mono' || '' }}
-          - ${{ github.event.inputs.build_type == 'all' && 'propo' || '' }}
+        os: ${{ fromJson(needs.prepare.outputs.platforms) }}
+        build_type: ${{ fromJson(needs.prepare.outputs.build_types) }}
       fail-fast: false
     
-    name: Build (${{ matrix.build_type }})
+    name: Build ${{ matrix.build_type }} on ${{ matrix.os }}
     
     steps:
     - name: Checkout repository
@@ -57,26 +78,56 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Install system dependencies
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y fontforge python3-fontforge
         pip install fonttools configparser
     
-    - name: Cache dependencies
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install fontforge
+        pip install fonttools configparser
+    
+    - name: Install system dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install fontforge -y
+        pip install fonttools configparser
+      shell: powershell
+    
+    - name: Cache Nerd Fonts dependencies
       uses: actions/cache@v4
       with:
         path: |
           src/
           !src/config.json
-        key: nerd-font-deps-${{ hashFiles('scripts/setup.sh') }}
+        key: nerd-fonts-v2-${{ runner.os }}-${{ hashFiles('scripts/setup.sh', 'scripts/setup.ps1') }}
         restore-keys: |
-          nerd-font-deps-
+          nerd-fonts-v2-${{ runner.os }}-
+          nerd-fonts-v2-
     
-    - name: Setup build environment
+    - name: Cache Python packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: pip-${{ runner.os }}-${{ hashFiles('scripts/setup.sh', 'scripts/setup.ps1') }}
+        restore-keys: |
+          pip-${{ runner.os }}-
+    
+    - name: Setup build environment (Unix)
+      if: matrix.os != 'windows-latest'
       run: |
         chmod +x scripts/setup.sh
         ./scripts/setup.sh
+    
+    - name: Setup build environment (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        .\scripts\setup.ps1
+      shell: powershell
     
     - name: Verify font files
       run: |
@@ -87,8 +138,8 @@ jobs:
         echo "TTF 文件数量: $(find "Google Sans Code" -name "*.ttf" | wc -l)"
         echo "OTF 文件数量: $(find "Google Sans Code" -name "*.otf" | wc -l)"
     
-    - name: Build fonts (${{ matrix.build_type }})
-      if: matrix.build_type != ''
+    - name: Build fonts (${{ matrix.build_type }}) on Unix
+      if: matrix.os != 'windows-latest'
       run: |
         chmod +x scripts/build.sh
         case "${{ matrix.build_type }}" in
@@ -107,8 +158,22 @@ jobs:
             ;;
         esac
     
-    - name: Verify build output
-      if: matrix.build_type != ''
+    - name: Build fonts (${{ matrix.build_type }}) on Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        switch ("${{ matrix.build_type }}") {
+          "complete" { .\scripts\build.ps1 -Complete -Verbose }
+          "mono" { .\scripts\build.ps1 -Mono -Verbose }
+          "propo" { .\scripts\build.ps1 -Propo -Verbose }
+          default { 
+            Write-Error "未知的构建类型: ${{ matrix.build_type }}"
+            exit 1
+          }
+        }
+      shell: powershell
+    
+    - name: Verify build output (Unix)
+      if: matrix.os != 'windows-latest'
       run: |
         echo "=== 构建输出统计 ==="
         if [ -d "patched-fonts" ]; then
@@ -127,8 +192,31 @@ jobs:
           exit 1
         fi
     
-    - name: Prepare artifacts
-      if: matrix.build_type != '' && (github.event.inputs.upload_artifacts == 'true' || github.event_name == 'release')
+    - name: Verify build output (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        Write-Host "=== 构建输出统计 ==="
+        if (Test-Path "patched-fonts") {
+          $fontCount = (Get-ChildItem -Path "patched-fonts" -Include "*.ttf", "*.otf" -Recurse).Count
+          Write-Host "输出字体数量: $fontCount"
+          Write-Host ""
+          Write-Host "=== 输出文件列表 ==="
+          Get-ChildItem -Path "patched-fonts" -Include "*.ttf", "*.otf" -Recurse | Select-Object -First 20 | ForEach-Object { Write-Host $_.Name }
+          if ($fontCount -gt 20) {
+            Write-Host "... 还有更多文件"
+          }
+          Write-Host ""
+          Write-Host "=== 目录大小 ==="
+          $size = (Get-ChildItem -Path "patched-fonts" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "${size:F2} MB"
+        } else {
+          Write-Error "错误: 未找到输出目录"
+          exit 1
+        }
+      shell: powershell
+    
+    - name: Prepare artifacts (Unix)
+      if: (github.event.inputs.upload_artifacts == 'true' || github.event_name == 'release') && matrix.os != 'windows-latest'
       run: |
         # 创建发布包
         cd patched-fonts
@@ -139,13 +227,13 @@ jobs:
         # 创建压缩包
         case "$BUILD_TYPE" in
           "complete")
-            zip -r "../GoogleSansCodeNerdFont-Complete.zip" . -x "*.DS_Store"
+            zip -r "../GoogleSansCodeNerdFont-Complete-${{ matrix.os }}.zip" . -x "*.DS_Store"
             ;;
           "mono")
-            zip -r "../GoogleSansCodeNerdFont-Mono.zip" . -x "*.DS_Store"
+            zip -r "../GoogleSansCodeNerdFont-Mono-${{ matrix.os }}.zip" . -x "*.DS_Store"
             ;;
           "propo")
-            zip -r "../GoogleSansCodeNerdFont-Propo.zip" . -x "*.DS_Store"
+            zip -r "../GoogleSansCodeNerdFont-Propo-${{ matrix.os }}.zip" . -x "*.DS_Store"
             ;;
         esac
         
@@ -155,11 +243,42 @@ jobs:
         echo "=== 压缩包信息 ==="
         ls -lh GoogleSansCodeNerdFont-*.zip 2>/dev/null || echo "未创建压缩包"
     
+    - name: Prepare artifacts (Windows)
+      if: (github.event.inputs.upload_artifacts == 'true' || github.event_name == 'release') && matrix.os == 'windows-latest'
+      run: |
+        # 创建发布包
+        Set-Location patched-fonts
+        
+        # 按构建类型组织文件
+        $BUILD_TYPE = "${{ matrix.build_type }}"
+        
+        # 创建压缩包
+        switch ($BUILD_TYPE) {
+          "complete" { 
+            Compress-Archive -Path "." -DestinationPath "..\GoogleSansCodeNerdFont-Complete-${{ matrix.os }}.zip" -CompressionLevel Optimal
+          }
+          "mono" { 
+            Compress-Archive -Path "." -DestinationPath "..\GoogleSansCodeNerdFont-Mono-${{ matrix.os }}.zip" -CompressionLevel Optimal
+          }
+          "propo" { 
+            Compress-Archive -Path "." -DestinationPath "..\GoogleSansCodeNerdFont-Propo-${{ matrix.os }}.zip" -CompressionLevel Optimal
+          }
+        }
+        
+        Set-Location ..
+        
+        # 验证压缩包
+        Write-Host "=== 压缩包信息 ==="
+        Get-ChildItem GoogleSansCodeNerdFont-*.zip -ErrorAction SilentlyContinue | ForEach-Object { 
+          Write-Host "$($_.Name): $([math]::Round($_.Length / 1MB, 2)) MB"
+        }
+      shell: powershell
+    
     - name: Upload artifacts
-      if: matrix.build_type != '' && (github.event.inputs.upload_artifacts == 'true' || github.event_name == 'release')
+      if: github.event.inputs.upload_artifacts == 'true' || github.event_name == 'release'
       uses: actions/upload-artifact@v4
       with:
-        name: GoogleSansCodeNerdFont-${{ matrix.build_type }}
+        name: GoogleSansCodeNerdFont-${{ matrix.build_type }}-${{ matrix.os }}
         path: |
           GoogleSansCodeNerdFont-*.zip
           patched-fonts/
@@ -180,11 +299,29 @@ jobs:
       run: |
         mkdir -p release-assets
         
-        # 移动所有 zip 文件到 release-assets
-        find artifacts -name "*.zip" -exec mv {} release-assets/ \;
+        # 合并跨平台的相同构建类型（保留最佳质量版本）
+        for build_type in complete mono propo; do
+          # 优先使用 Ubuntu 构建的版本（兼容性最好）
+          if [ -f "artifacts/GoogleSansCodeNerdFont-${build_type}-ubuntu-latest/GoogleSansCodeNerdFont-${build_type^}-ubuntu-latest.zip" ]; then
+            cp "artifacts/GoogleSansCodeNerdFont-${build_type}-ubuntu-latest/GoogleSansCodeNerdFont-${build_type^}-ubuntu-latest.zip" "release-assets/GoogleSansCodeNerdFont-${build_type^}.zip"
+          # 备选其他平台
+          elif [ -f "artifacts/GoogleSansCodeNerdFont-${build_type}-macos-latest/GoogleSansCodeNerdFont-${build_type^}-macos-latest.zip" ]; then
+            cp "artifacts/GoogleSansCodeNerdFont-${build_type}-macos-latest/GoogleSansCodeNerdFont-${build_type^}-macos-latest.zip" "release-assets/GoogleSansCodeNerdFont-${build_type^}.zip"
+          elif [ -f "artifacts/GoogleSansCodeNerdFont-${build_type}-windows-latest/GoogleSansCodeNerdFont-${build_type^}-windows-latest.zip" ]; then
+            cp "artifacts/GoogleSansCodeNerdFont-${build_type}-windows-latest/GoogleSansCodeNerdFont-${build_type^}-windows-latest.zip" "release-assets/GoogleSansCodeNerdFont-${build_type^}.zip"
+          fi
+        done
+        
+        # 生成校验和文件
+        cd release-assets
+        sha256sum *.zip > checksums.sha256
+        cd ..
         
         echo "=== 发布资产 ==="
         ls -lh release-assets/
+        echo ""
+        echo "=== 校验和 ==="
+        cat release-assets/checksums.sha256
     
     - name: Upload release assets
       uses: softprops/action-gh-release@v1
@@ -197,9 +334,21 @@ jobs:
           
           ### 📦 下载说明
           
-          - **Complete**: 包含所有图标的完整版本（推荐）
-          - **Mono**: 等宽图标版本，适合终端使用
-          - **Propo**: 比例宽度图标版本
+          - **GoogleSansCodeNerdFont-Complete.zip** - 完整版本，包含所有图标（推荐）
+          - **GoogleSansCodeNerdFont-Mono.zip** - 等宽图标版本，适合终端使用
+          - **GoogleSansCodeNerdFont-Propo.zip** - 比例宽度图标版本
+          - **checksums.sha256** - 文件完整性校验和
+          
+          ### 🔐 文件验证
+          
+          下载后请验证文件完整性：
+          ```bash
+          # Linux/macOS
+          sha256sum -c checksums.sha256
+          
+          # Windows PowerShell
+          Get-FileHash *.zip -Algorithm SHA256 | Format-Table
+          ```
           
           ### 🎯 包含的图标集
           
@@ -214,9 +363,29 @@ jobs:
           
           ### 💾 安装方法
           
+          #### Windows
           1. 下载对应的 zip 文件
-          2. 解压后安装字体文件
-          3. 在您的终端或编辑器中选择 "GoogleSansCodeNerdFont" 字体系列
+          2. 解压缩
+          3. 右键字体文件选择"安装"或"为所有用户安装"
+          4. 在应用程序中选择 "GoogleSansCodeNerdFont" 字体
+          
+          #### macOS
+          1. 下载对应的 zip 文件
+          2. 解压缩
+          3. 双击字体文件并点击"安装字体"
+          4. 在应用程序中选择 "GoogleSansCodeNerdFont" 字体
+          
+          #### Linux
+          ```bash
+          # 用户安装
+          mkdir -p ~/.local/share/fonts
+          unzip GoogleSansCodeNerdFont-Complete.zip -d ~/.local/share/fonts/
+          fc-cache -fv
+          
+          # 系统级安装 (需要 sudo)
+          sudo unzip GoogleSansCodeNerdFont-Complete.zip -d /usr/share/fonts/
+          sudo fc-cache -fv
+          ```
           
           ### 🔧 支持的字重
           
@@ -229,7 +398,12 @@ jobs:
           
           ---
           
-          构建时间: ${{ github.run_id }}
+          **构建信息**
+          - 构建时间: ${{ github.run_id }}
+          - Git 提交: ${{ github.sha }}
+          - 发布版本: ${{ github.ref_name }}
+          
+          🤖 自动构建于 GitHub Actions
         draft: false
         prerelease: false
       env:

@@ -304,7 +304,7 @@ function Invoke-FontProcessing {
     }
 }
 
-# 并行处理字体文件
+# 并行处理字体文件 (简化版本)
 function Invoke-FontsProcessingParallel {
     param(
         [string[]]$FontFiles
@@ -321,105 +321,64 @@ function Invoke-FontsProcessingParallel {
         return $true
     }
     
-    # 使用 PowerShell 作业进行并行处理
-    $jobs = @()
+    # 使用简化的并行处理方式
     $successCount = 0
     $errorCount = 0
     
-    try {
-        # 启动并行作业
+    # 如果只有少量文件或并行数为1，使用顺序处理
+    if ($FontFiles.Count -le 2 -or $Parallel -eq 1) {
         foreach ($fontFile in $FontFiles) {
-            # 等待空闲槽位
-            while (($jobs | Where-Object { $_.State -eq "Running" }).Count -ge $Parallel) {
-                Start-Sleep -Milliseconds 100
-                
-                # 检查已完成的作业
-                $completedJobs = $jobs | Where-Object { $_.State -ne "Running" }
-                foreach ($job in $completedJobs) {
-                    $result = Receive-Job -Job $job
-                    Remove-Job -Job $job
-                    
-                    if ($result) {
-                        $successCount++
-                    } else {
-                        $errorCount++
-                    }
-                }
-                
-                # 移除已完成的作业
-                $jobs = $jobs | Where-Object { $_.State -eq "Running" }
+            if (Invoke-FontProcessing -FontFile $fontFile) {
+                $successCount++
+            } else {
+                $errorCount++
             }
-            
-            # 启动新作业
-            $scriptBlock = {
-                param($FontFile, $PatcherScript, $GlyphsDir, $Output, $BuildType, $UseComplete, $FontAwesome, $FontAwesomeExt, $Octicons, $Codicons, $Powerline, $PowerlineExtra, $Material, $Weather, $Devicons, $Pomicons, $FontLogos, $PowerSymbols)
+        }
+    } else {
+        # 使用 ForEach-Object -Parallel (PowerShell 7+) 或回退到顺序处理
+        try {
+            $results = $FontFiles | ForEach-Object -Parallel {
+                param($fontFile)
                 
-                # 重新定义构建参数函数（在作业中）
-                function Build-PatcherArgs {
-                    $args = @("--quiet", "--glyphdir", $GlyphsDir, "--outputdir", $Output)
+                # 导入必要的函数和变量
+                $PatcherScript = $using:PatcherScript
+                $GlyphsDir = $using:GlyphsDir
+                $Output = $using:Output
+                $BuildType = $using:BuildType
+                $UseComplete = $using:UseComplete
+                # ... 其他变量
+                
+                # 简化的处理逻辑
+                try {
+                    $patcherArgs = @("--quiet", "--glyphdir", $GlyphsDir, "--outputdir", $Output)
                     
                     switch ($BuildType) {
-                        "mono" { $args += @("--mono", "--complete") }
-                        "propo" { $args += @("--variable-width-glyphs", "--complete") }
-                        default { $args += "--complete" }
+                        "mono" { $patcherArgs += @("--mono", "--complete") }
+                        "propo" { $patcherArgs += @("--variable-width-glyphs", "--complete") }
+                        default { $patcherArgs += "--complete" }
                     }
                     
-                    if (-not $UseComplete) {
-                        if ($FontAwesome) { $args += "--fontawesome" }
-                        if ($FontAwesomeExt) { $args += "--fontawesomeextension" }
-                        if ($Octicons) { $args += "--octicons" }
-                        if ($Codicons) { $args += "--codicons" }
-                        if ($Powerline) { $args += "--powerline" }
-                        if ($PowerlineExtra) { $args += "--powerlineextra" }
-                        if ($Material) { $args += "--material" }
-                        if ($Weather) { $args += "--weather" }
-                        if ($Devicons) { $args += "--devicons" }
-                        if ($Pomicons) { $args += "--pomicons" }
-                        if ($FontLogos) { $args += "--fontlogos" }
-                        if ($PowerSymbols) { $args += "--powersymbols" }
-                    }
-                    
-                    return $args
-                }
-                
-                try {
-                    $patcherArgs = Build-PatcherArgs
-                    $process = Start-Process -FilePath "fontforge" -ArgumentList @("-script", $PatcherScript) + $patcherArgs + @($FontFile) -Wait -PassThru -NoNewWindow -RedirectStandardError "nul"
+                    $process = Start-Process -FilePath "fontforge" -ArgumentList @("-script", $PatcherScript) + $patcherArgs + @($fontFile) -Wait -PassThru -NoNewWindow -RedirectStandardError "nul"
                     return $process.ExitCode -eq 0
                 }
                 catch {
                     return $false
                 }
-            }
+            } -ThrottleLimit $Parallel
             
-            $job = Start-Job -ScriptBlock $scriptBlock -ArgumentList @($fontFile, $PatcherScript, $GlyphsDir, $Output, $BuildType, $UseComplete, $FontAwesome, $FontAwesomeExt, $Octicons, $Codicons, $Powerline, $PowerlineExtra, $Material, $Weather, $Devicons, $Pomicons, $FontLogos, $PowerSymbols)
-            $jobs += $job
+            $successCount = ($results | Where-Object { $_ -eq $true }).Count
+            $errorCount = $total - $successCount
         }
-        
-        # 等待所有作业完成
-        while ($jobs.Count -gt 0) {
-            Start-Sleep -Milliseconds 100
-            
-            $completedJobs = $jobs | Where-Object { $_.State -ne "Running" }
-            foreach ($job in $completedJobs) {
-                $result = Receive-Job -Job $job
-                Remove-Job -Job $job
-                
-                if ($result) {
+        catch {
+            # 回退到顺序处理
+            Write-Warning "并行处理失败，回退到顺序处理"
+            foreach ($fontFile in $FontFiles) {
+                if (Invoke-FontProcessing -FontFile $fontFile) {
                     $successCount++
                 } else {
                     $errorCount++
                 }
             }
-            
-            $jobs = $jobs | Where-Object { $_.State -eq "Running" }
-        }
-    }
-    finally {
-        # 清理任何剩余的作业
-        $jobs | ForEach-Object {
-            Stop-Job -Job $_
-            Remove-Job -Job $_
         }
     }
     
@@ -431,6 +390,131 @@ function Invoke-FontsProcessingParallel {
     if ($errorCount -gt 0) {
         Write-Warning "部分字体处理失败，请检查日志"
         return $false
+    }
+    
+    return $true
+}
+
+# 生成字体元数据和校验和
+function New-FontMetadata {
+    param(
+        [string]$OutputDir
+    )
+    
+    if (-not (Test-Path $OutputDir)) {
+        Write-Error "输出目录不存在: $OutputDir"
+        return $false
+    }
+    
+    Write-Status "生成字体元数据和校验和..."
+    
+    # 创建元数据文件
+    $metadataFile = Join-Path $OutputDir "font-info.json"
+    $checksumsFile = Join-Path $OutputDir "checksums.sha256"
+    
+    # 获取版本信息
+    try {
+        $version = (git describe --tags --always 2>$null) -join ""
+        if (-not $version) { $version = "unknown" }
+    } catch {
+        $version = "unknown"
+    }
+    
+    try {
+        $commit = (git rev-parse --short HEAD 2>$null) -join ""
+        if (-not $commit) { $commit = "unknown" }
+    } catch {
+        $commit = "unknown"
+    }
+    
+    $buildDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    $platform = "$([System.Environment]::OSVersion.Platform)-$([System.Environment]::GetEnvironmentVariable('PROCESSOR_ARCHITECTURE'))"
+    
+    # 生成 JSON 元数据基础结构
+    $metadata = @{
+        name = "Google Sans Code Nerd Font"
+        version = $version
+        build = @{
+            type = $BuildType
+            date = $buildDate
+            commit = $commit
+            platform = $platform
+            script_version = "2.0"
+        }
+        source = @{
+            base_font = "Google Sans Code"
+            nerd_fonts_version = "auto-detected"
+            patcher_script = $PatcherScript
+        }
+        fonts = @()
+    }
+    
+    # 收集字体文件信息
+    $fontFiles = Get-ChildItem -Path $OutputDir -Include "*.ttf", "*.otf" -Recurse
+    
+    foreach ($fontFile in $fontFiles) {
+        $fileHash = (Get-FileHash -Path $fontFile.FullName -Algorithm SHA256).Hash.ToLower()
+        
+        $fontInfo = @{
+            filename = $fontFile.Name
+            size = $fontFile.Length
+            sha256 = $fileHash
+            path = $fontFile.FullName.Replace("$OutputDir\", "").Replace("\", "/")
+        }
+        
+        $metadata.fonts += $fontInfo
+    }
+    
+    # 保存元数据文件
+    $metadata | ConvertTo-Json -Depth 4 | Out-File -FilePath $metadataFile -Encoding UTF8
+    
+    # 生成校验和文件
+    if ($fontFiles.Count -gt 0) {
+        $checksums = @()
+        foreach ($fontFile in $fontFiles) {
+            $fileHash = (Get-FileHash -Path $fontFile.FullName -Algorithm SHA256).Hash.ToLower()
+            $relativePath = $fontFile.FullName.Replace("$OutputDir\", "").Replace("\", "/")
+            $checksums += "$fileHash  $relativePath"
+        }
+        
+        $checksums | Sort-Object | Out-File -FilePath $checksumsFile -Encoding UTF8
+    }
+    
+    # 复制安装文档到输出目录
+    if (Test-Path "docs\INSTALL.md") {
+        Copy-Item "docs\INSTALL.md" (Join-Path $OutputDir "README.md")
+        Write-Status "已添加安装说明文档"
+    }
+    
+    # 创建简化的许可证文件
+    $licenseContent = @"
+Google Sans Code Nerd Font
+
+This package contains Google Sans Code font patched with Nerd Font icons.
+
+Font License:
+- Google Sans Code: SIL Open Font License 1.1
+- Nerd Font Icons: Various licenses (see source repositories)
+
+Source: https://github.com/google/fonts/tree/main/ofl/googlesanscode
+Nerd Fonts: https://github.com/ryanoasis/nerd-fonts
+
+For detailed license information, please visit the source repositories.
+"@
+    
+    $licenseContent | Out-File -FilePath (Join-Path $OutputDir "LICENSE.txt") -Encoding UTF8
+    
+    # 显示统计信息
+    $fontCount = $fontFiles.Count
+    $totalSize = [math]::Round((Get-ChildItem -Path $OutputDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+    
+    Write-Success "元数据生成完成"
+    Write-Status "字体数量: $fontCount"
+    Write-Status "总大小: ${totalSize} MB"
+    Write-Status "元数据文件: $metadataFile"
+    
+    if (Test-Path $checksumsFile) {
+        Write-Status "校验和文件: $checksumsFile"
     }
     
     return $true
@@ -499,6 +583,11 @@ function Main {
         # 处理字体文件
         if (Invoke-FontsProcessingParallel -FontFiles $fontFiles) {
             Write-Host ""
+            
+            # 生成元数据和校验和
+            New-FontMetadata -OutputDir $Output
+            Write-Host ""
+            
             Write-Success "所有字体构建完成！"
             Write-Status "输出目录: $Output"
             

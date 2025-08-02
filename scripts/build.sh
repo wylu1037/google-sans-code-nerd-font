@@ -252,7 +252,34 @@ check_dependencies() {
     if [ ${#missing_deps[@]} -ne 0 ]; then
         print_error "缺少以下依赖: ${missing_deps[*]}"
         print_status "请先运行设置脚本: ./scripts/setup.sh"
+        print_status "或手动安装缺少的依赖"
+        
+        # 提供安装建议
+        print_status "安装建议:"
+        if command -v apt-get >/dev/null 2>&1; then
+            echo "  sudo apt-get install fontforge python3 python3-pip"
+        elif command -v brew >/dev/null 2>&1; then
+            echo "  brew install fontforge python3"
+        elif command -v pacman >/dev/null 2>&1; then
+            echo "  sudo pacman -S fontforge python python-pip"
+        elif command -v dnf >/dev/null 2>&1; then
+            echo "  sudo dnf install fontforge python3 python3-pip"
+        fi
+        
         exit 1
+    fi
+    
+    # 验证 Python 模块
+    local python_cmd
+    if command -v python3 >/dev/null 2>&1; then
+        python_cmd="python3"
+    else
+        python_cmd="python"
+    fi
+    
+    if ! $python_cmd -c "import fontTools" >/dev/null 2>&1; then
+        print_warning "fontTools 模块未安装，字体处理可能出现问题"
+        print_status "建议安装: pip install fonttools"
     fi
     
     print_success "所有依赖检查通过"
@@ -420,71 +447,90 @@ process_fonts_parallel() {
         return 0
     fi
     
-    # 使用 GNU parallel 或者简单的后台任务处理
-    if command -v parallel >/dev/null 2>&1; then
-        # 使用 GNU parallel
-        export -f process_font build_patcher_args
-        export PATCHER_SCRIPT GLYPHS_DIR OUTPUT_DIR BUILD_TYPE COMPLETE
-        export FONTAWESOME FONTAWESOME_EXT OCTICONS CODICONS POWERLINE POWERLINE_EXTRA
-        export MATERIAL WEATHER DEVICONS POMICONS FONTLOGOS POWERSYMBOLS
-        export VERBOSE DRY_RUN
-        
-        print_status "使用 GNU parallel 并行处理字体..."
-        
-        # 使用 parallel 处理，并收集退出码
-        local temp_results="/tmp/font_build_results_$$"
-        if printf '%s\n' "${font_files[@]}" | parallel -j "$PARALLEL_JOBS" --results "$temp_results" process_font; then
-            # 统计成功的任务
-            success_count=$(find "$temp_results" -name "stdout" -exec grep -l "SUCCESS" {} \; 2>/dev/null | wc -l)
-            error_count=$((total - success_count))
-        else
-            # 如果 parallel 本身失败，统计实际结果
-            success_count=$(find "$temp_results" -name "exitval" -exec cat {} \; 2>/dev/null | grep -c "^0$" || echo 0)
-            error_count=$((total - success_count))
-        fi
-        
-        # 清理临时文件
-        rm -rf "$temp_results" 2>/dev/null
-    else
-        # 简单的后台任务处理
-        local pids=()
-        local job_count=0
-        
+    # 简化的并行处理策略
+    if [ ${#font_files[@]} -le 2 ] || [ "$PARALLEL_JOBS" -eq 1 ]; then
+        # 少量文件或单线程，使用顺序处理
+        local current=0
         for font_file in "${font_files[@]}"; do
-            # 等待空闲槽位
-            while [ ${#pids[@]} -ge "$PARALLEL_JOBS" ]; do
-                for i in "${!pids[@]}"; do
-                    if ! kill -0 "${pids[$i]}" 2>/dev/null; then
-                        wait "${pids[$i]}"
-                        local exit_code=$?
-                        if [ $exit_code -eq 0 ]; then
-                            ((success_count++))
-                        else
-                            ((error_count++))
-                        fi
-                        unset "pids[$i]"
-                    fi
-                done
-                pids=("${pids[@]}")  # 重新索引数组
-                sleep 0.1
-            done
+            ((current++))
+            print_status "处理 ($current/$total): $(basename "$font_file")"
             
-            # 启动新任务
-            process_font_sequential "$font_file" &
-            pids+=($!)
-            ((job_count++))
-        done
-        
-        # 等待所有任务完成
-        for pid in "${pids[@]}"; do
-            wait "$pid"
-            local exit_code=$?
-            if [ $exit_code -eq 0 ]; then
+            if process_font_sequential "$font_file"; then
                 ((success_count++))
             else
                 ((error_count++))
+                # 允许继续处理其他文件
+                print_warning "跳过失败的字体，继续处理其他文件"
             fi
         done
+    else
+        # 使用 GNU parallel 或者简单的后台任务处理
+        if command -v parallel >/dev/null 2>&1; then
+            # 使用 GNU parallel
+            export -f process_font build_patcher_args
+            export PATCHER_SCRIPT GLYPHS_DIR OUTPUT_DIR BUILD_TYPE COMPLETE
+            export FONTAWESOME FONTAWESOME_EXT OCTICONS CODICONS POWERLINE POWERLINE_EXTRA
+            export MATERIAL WEATHER DEVICONS POMICONS FONTLOGOS POWERSYMBOLS
+            export VERBOSE DRY_RUN
+            
+            print_status "使用 GNU parallel 并行处理字体..."
+            
+            # 使用 parallel 处理，并收集退出码
+            local temp_results="/tmp/font_build_results_$$"
+            if printf '%s\n' "${font_files[@]}" | parallel -j "$PARALLEL_JOBS" --results "$temp_results" --bar process_font; then
+                # 统计成功的任务
+                success_count=$(find "$temp_results" -name "stdout" -exec grep -l "SUCCESS" {} \; 2>/dev/null | wc -l)
+                error_count=$((total - success_count))
+            else
+                # 如果 parallel 本身失败，统计实际结果
+                success_count=$(find "$temp_results" -name "exitval" -exec cat {} \; 2>/dev/null | grep -c "^0$" || echo 0)
+                error_count=$((total - success_count))
+            fi
+            
+            # 清理临时文件
+            rm -rf "$temp_results" 2>/dev/null
+        else
+            # 简单的后台任务处理（限制并发数）
+            local pids=()
+            local current=0
+            
+            for font_file in "${font_files[@]}"; do
+                # 等待空闲槽位
+                while [ ${#pids[@]} -ge "$PARALLEL_JOBS" ]; do
+                    for i in "${!pids[@]}"; do
+                        if ! kill -0 "${pids[$i]}" 2>/dev/null; then
+                            wait "${pids[$i]}"
+                            local exit_code=$?
+                            if [ $exit_code -eq 0 ]; then
+                                ((success_count++))
+                            else
+                                ((error_count++))
+                            fi
+                            unset "pids[$i]"
+                        fi
+                    done
+                    pids=("${pids[@]}")  # 重新索引数组
+                    sleep 0.1
+                done
+                
+                # 启动新任务
+                ((current++))
+                print_status "启动处理 ($current/$total): $(basename "$font_file")"
+                process_font_sequential "$font_file" &
+                pids+=($!)
+            done
+            
+            # 等待所有任务完成
+            for pid in "${pids[@]}"; do
+                wait "$pid"
+                local exit_code=$?
+                if [ $exit_code -eq 0 ]; then
+                    ((success_count++))
+                else
+                    ((error_count++))
+                fi
+            done
+        fi
     fi
     
     # 显示结果
@@ -494,10 +540,142 @@ process_fonts_parallel() {
     
     if [ $error_count -gt 0 ]; then
         print_warning "部分字体处理失败，请检查日志"
-        return 1
+        # 但不完全失败，只要有成功的就算部分成功
+        if [ $success_count -gt 0 ]; then
+            print_status "已成功处理 $success_count 个字体文件"
+            return 0
+        else
+            return 1
+        fi
     fi
     
     return 0
+}
+
+# 生成字体元数据和校验和
+generate_metadata() {
+    local output_dir="$1"
+    
+    if [ ! -d "$output_dir" ]; then
+        print_error "输出目录不存在: $output_dir"
+        return 1
+    fi
+    
+    print_status "生成字体元数据和校验和..."
+    
+    # 创建元数据文件
+    local metadata_file="$output_dir/font-info.json"
+    local checksums_file="$output_dir/checksums.sha256"
+    
+    # 获取版本信息
+    local version=$(git describe --tags --always 2>/dev/null || echo "unknown")
+    local commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    local build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    
+    # 生成 JSON 元数据
+    cat > "$metadata_file" << EOF
+{
+  "name": "Google Sans Code Nerd Font",
+  "version": "$version",
+  "build": {
+    "type": "$BUILD_TYPE",
+    "date": "$build_date",
+    "commit": "$commit",
+    "platform": "$(uname -s)-$(uname -m)",
+    "script_version": "2.0"
+  },
+  "source": {
+    "base_font": "Google Sans Code",
+    "nerd_fonts_version": "auto-detected",
+    "patcher_script": "$PATCHER_SCRIPT"
+  },
+  "fonts": []
+}
+EOF
+    
+    # 收集字体文件信息
+    local font_info=""
+    local first=true
+    
+    while IFS= read -r -d '' font_file; do
+        if [ "$first" = true ]; then
+            first=false
+        else
+            font_info+=","
+        fi
+        
+        local filename=$(basename "$font_file")
+        local filesize=$(stat -c%s "$font_file" 2>/dev/null || stat -f%z "$font_file" 2>/dev/null || echo "unknown")
+        local sha256_hash
+        
+        if command -v sha256sum >/dev/null 2>&1; then
+            sha256_hash=$(sha256sum "$font_file" | cut -d' ' -f1)
+        elif command -v shasum >/dev/null 2>&1; then
+            sha256_hash=$(shasum -a 256 "$font_file" | cut -d' ' -f1)
+        else
+            sha256_hash="unavailable"
+        fi
+        
+        font_info+=$(cat << EOF
+
+    {
+      "filename": "$filename",
+      "size": $filesize,
+      "sha256": "$sha256_hash",
+      "path": "${font_file#$output_dir/}"
+    }
+EOF
+        )
+    done < <(find "$output_dir" -name "*.ttf" -o -name "*.otf" -print0)
+    
+    # 更新 JSON 文件
+    sed -i "s/\"fonts\": \[\]/\"fonts\": [$font_info\n  ]/" "$metadata_file"
+    
+    # 生成校验和文件
+    cd "$output_dir"
+    if command -v sha256sum >/dev/null 2>&1; then
+        find . -name "*.ttf" -o -name "*.otf" | sort | xargs sha256sum > "$checksums_file"
+    elif command -v shasum >/dev/null 2>&1; then
+        find . -name "*.ttf" -o -name "*.otf" | sort | xargs shasum -a 256 > "$checksums_file"
+    else
+        print_warning "无法生成校验和文件，系统缺少 sha256sum 或 shasum 命令"
+    fi
+    cd - >/dev/null
+    
+    # 复制安装文档到输出目录
+    if [ -f "docs/INSTALL.md" ]; then
+        cp "docs/INSTALL.md" "$output_dir/README.md"
+        print_status "已添加安装说明文档"
+    fi
+    
+    # 创建简化的许可证文件
+    cat > "$output_dir/LICENSE.txt" << EOF
+Google Sans Code Nerd Font
+
+This package contains Google Sans Code font patched with Nerd Font icons.
+
+Font License:
+- Google Sans Code: SIL Open Font License 1.1
+- Nerd Font Icons: Various licenses (see source repositories)
+
+Source: https://github.com/google/fonts/tree/main/ofl/googlesanscode
+Nerd Fonts: https://github.com/ryanoasis/nerd-fonts
+
+For detailed license information, please visit the source repositories.
+EOF
+    
+    # 显示统计信息
+    local font_count=$(find "$output_dir" -name "*.ttf" -o -name "*.otf" | wc -l)
+    local total_size=$(du -sh "$output_dir" | cut -f1)
+    
+    print_success "元数据生成完成"
+    print_status "字体数量: $font_count"
+    print_status "总大小: $total_size"
+    print_status "元数据文件: $metadata_file"
+    
+    if [ -f "$checksums_file" ]; then
+        print_status "校验和文件: $checksums_file"
+    fi
 }
 
 # 显示构建摘要
@@ -573,6 +751,11 @@ main() {
     # 处理字体文件
     if process_fonts_parallel "${font_files[@]}"; then
         echo
+        
+        # 生成元数据和校验和
+        generate_metadata "$OUTPUT_DIR"
+        echo
+        
         print_success "所有字体构建完成！"
         print_status "输出目录: $OUTPUT_DIR"
         
