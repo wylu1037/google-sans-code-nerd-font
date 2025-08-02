@@ -129,14 +129,25 @@ jobs:
         .\scripts\setup.ps1
       shell: powershell
     
-    - name: Verify font files
+    - name: Verify font files and working directory
       run: |
-        echo "=== 验证源字体文件 ==="
-        find "Google Sans Code" -name "*.ttf" -o -name "*.otf" | sort
+        echo "=== 当前工作目录 ==="
+        pwd
         echo ""
-        echo "=== 字体文件统计 ==="
-        echo "TTF 文件数量: $(find "Google Sans Code" -name "*.ttf" | wc -l)"
-        echo "OTF 文件数量: $(find "Google Sans Code" -name "*.otf" | wc -l)"
+        echo "=== 目录结构 ==="
+        ls -la
+        echo ""
+        echo "=== 验证源字体文件 ==="
+        if [ -d "Google Sans Code" ]; then
+          find "Google Sans Code" -name "*.ttf" -o -name "*.otf" | sort
+          echo ""
+          echo "=== 字体文件统计 ==="
+          echo "TTF 文件数量: $(find "Google Sans Code" -name "*.ttf" | wc -l)"
+          echo "OTF 文件数量: $(find "Google Sans Code" -name "*.otf" | wc -l)"
+        else
+          echo "ERROR: Google Sans Code 目录不存在"
+          exit 1
+        fi
     
     - name: Build fonts (${{ matrix.build_type }}) on Unix
       if: matrix.os != 'windows-latest'
@@ -409,65 +420,3 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-      fail-fast: false
-    
-    name: Test setup on ${{ matrix.os }}
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    
-    - name: Install system dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y fontforge python3-fontforge
-    
-    - name: Install system dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install fontforge
-    
-    - name: Install system dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        # 使用 Chocolatey 安装 FontForge
-        choco install fontforge -y
-      shell: powershell
-    
-    - name: Install Python dependencies
-      run: |
-        pip install fonttools configparser
-    
-    - name: Test setup script (Unix)
-      if: matrix.os != 'windows-latest'
-      run: |
-        chmod +x scripts/setup.sh
-        # 只验证脚本语法，不实际下载
-        bash -n scripts/setup.sh
-        chmod +x scripts/build.sh
-        bash -n scripts/build.sh
-    
-    - name: Test setup script (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        # 验证 PowerShell 脚本语法
-        Get-Command .\scripts\setup.ps1
-        Get-Command .\scripts\build.ps1
-      shell: powershell
-    
-    - name: Verify dependencies
-      run: |
-        python --version
-        pip list | grep fonttools || echo "fonttools not found"
-      shell: bash

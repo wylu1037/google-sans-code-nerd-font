@@ -28,7 +28,19 @@ param(
 # 设置错误处理
 $ErrorActionPreference = "Stop"
 
-# 默认配置
+# 获取脚本所在目录和项目根目录
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectDir = Split-Path -Parent $ScriptDir
+
+# 切换到项目根目录
+Set-Location $ProjectDir
+
+# 输出调试信息
+Write-Host "DEBUG: 脚本目录: $ScriptDir" -ForegroundColor Yellow
+Write-Host "DEBUG: 项目根目录: $ProjectDir" -ForegroundColor Yellow
+Write-Host "DEBUG: 当前工作目录: $(Get-Location)" -ForegroundColor Yellow
+
+# 默认配置（相对于项目根目录）
 $script:DefaultFontDir = "Google Sans Code"
 $script:DefaultOutputDir = "patched-fonts"
 $script:PatcherScript = "src\font-patcher"
@@ -193,13 +205,50 @@ function Get-FontFiles {
     } else {
         # 处理所有字体文件
         Write-Status "搜索字体文件..."
+        Write-Debug "当前工作目录: $(Get-Location)"
+        Write-Debug "检查字体目录: $DefaultFontDir"
         
-        $fontFiles = Get-ChildItem -Path $DefaultFontDir -Include "*.ttf", "*.otf" -Recurse | 
-                     Sort-Object Name |
-                     ForEach-Object { $_.FullName }
+        # 修复 PowerShell 字体文件搜索逻辑
+        $fontFiles = @()
+        
+        # 搜索根目录的字体文件
+        $rootFonts = Get-ChildItem -Path $DefaultFontDir -File -Filter "*.ttf" -ErrorAction SilentlyContinue
+        if ($rootFonts) {
+            $fontFiles += $rootFonts | ForEach-Object { $_.FullName }
+        }
+        
+        $rootOtfFonts = Get-ChildItem -Path $DefaultFontDir -File -Filter "*.otf" -ErrorAction SilentlyContinue
+        if ($rootOtfFonts) {
+            $fontFiles += $rootOtfFonts | ForEach-Object { $_.FullName }
+        }
+        
+        # 搜索子目录的字体文件
+        $subFonts = Get-ChildItem -Path $DefaultFontDir -Recurse -File | Where-Object { $_.Extension -in @('.ttf', '.otf') }
+        if ($subFonts) {
+            $fontFiles += $subFonts | ForEach-Object { $_.FullName }
+        }
+        
+        # 去重并排序
+        $fontFiles = $fontFiles | Sort-Object -Unique
         
         if ($fontFiles.Count -eq 0) {
             Write-Error "在 $DefaultFontDir 中未找到字体文件"
+            Write-Status "调试信息:"
+            Write-Host "  当前工作目录: $(Get-Location)" -ForegroundColor Gray
+            Write-Host "  检查目录: $DefaultFontDir" -ForegroundColor Gray
+            
+            if (Test-Path $DefaultFontDir) {
+                Write-Status "字体目录存在，内容如下:"
+                Get-ChildItem -Path $DefaultFontDir -Recurse | ForEach-Object {
+                    Write-Host "  发现文件: $($_.FullName)" -ForegroundColor Gray
+                }
+            } else {
+                Write-Error "字体目录不存在: $DefaultFontDir"
+                Write-Status "当前目录内容:"
+                Get-ChildItem | ForEach-Object {
+                    Write-Host "  $($_.Name)" -ForegroundColor Gray
+                }
+            }
             exit 1
         }
     }

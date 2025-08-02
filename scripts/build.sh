@@ -13,7 +13,19 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
-# 默认配置
+# 获取脚本所在目录和项目根目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 切换到项目根目录
+cd "$PROJECT_DIR"
+
+# 输出调试信息
+echo "DEBUG: 脚本目录: $SCRIPT_DIR"
+echo "DEBUG: 项目根目录: $PROJECT_DIR"
+echo "DEBUG: 当前工作目录: $(pwd)"
+
+# 默认配置（相对于项目根目录）
 DEFAULT_FONT_DIR="Google Sans Code"
 DEFAULT_OUTPUT_DIR="patched-fonts"
 DEFAULT_TEMP_DIR="temp"
@@ -730,10 +742,22 @@ main() {
     
     # 获取字体文件列表
     print_status "搜索字体文件..."
+    print_debug "当前工作目录: $(pwd)"
+    print_debug "检查字体目录: $DEFAULT_FONT_DIR"
+    
+    if [ ! -d "$DEFAULT_FONT_DIR" ]; then
+        print_error "字体目录不存在: $DEFAULT_FONT_DIR"
+        print_debug "当前目录内容:"
+        ls -la
+        exit 1
+    fi
+    
     mapfile -t font_files < <(get_font_files)
     
     if [ ${#font_files[@]} -eq 0 ]; then
         print_error "未找到任何字体文件"
+        print_debug "字体目录内容:"
+        find "$DEFAULT_FONT_DIR" -type f -name "*" 2>/dev/null || echo "无法访问目录"
         exit 1
     fi
     
