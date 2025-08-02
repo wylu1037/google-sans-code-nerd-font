@@ -278,7 +278,7 @@ get_font_files() {
         font_files+=("$font_path")
     else
         # 处理所有字体文件
-        print_status "搜索字体文件..."
+        # 注意：不要在这里使用 print_status，因为这个函数的输出会被 mapfile 捕获
         
         # 搜索字体文件
         while IFS= read -r -d '' file; do
@@ -286,21 +286,12 @@ get_font_files() {
         done < <(find "$DEFAULT_FONT_DIR" -name "*.ttf" -o -name "*.otf" -print0 2>/dev/null | sort -z)
         
         if [ ${#font_files[@]} -eq 0 ]; then
-            print_error "在 $DEFAULT_FONT_DIR 中未找到字体文件"
+            echo "ERROR: 在 $DEFAULT_FONT_DIR 中未找到字体文件" >&2
             exit 1
         fi
     fi
     
-    print_success "找到 ${#font_files[@]} 个字体文件"
-    
-    # 如果是详细模式，列出所有文件
-    if [ "$VERBOSE" = true ]; then
-        print_debug "字体文件列表:"
-        for file in "${font_files[@]}"; do
-            echo "  - $file"
-        done
-    fi
-    
+    # 只输出文件路径，不输出任何状态信息
     printf '%s\n' "${font_files[@]}"
 }
 
@@ -347,8 +338,42 @@ build_patcher_args() {
     printf '%s\n' "${args[@]}"
 }
 
-# 处理单个字体文件
+# 处理单个字体文件（用于并行处理）
 process_font() {
+    local font_file="$1"
+    local font_name=$(basename "$font_file")
+    
+    # 在并行模式下，减少输出避免混乱
+    echo "[INFO] 处理字体: $font_name" >&2
+    
+    if [ "$DRY_RUN" = true ]; then
+        echo "[DEBUG] 预览模式 - 跳过实际处理" >&2
+        return 0
+    fi
+    
+    # 构建参数
+    local patcher_args
+    mapfile -t patcher_args < <(build_patcher_args)
+    
+    # 确保输出目录存在
+    mkdir -p "$OUTPUT_DIR"
+    
+    if [ "$VERBOSE" = true ]; then
+        echo "[DEBUG] 执行命令: fontforge -script $PATCHER_SCRIPT ${patcher_args[*]} $font_file" >&2
+    fi
+    
+    # 执行 font-patcher
+    if fontforge -script "$PATCHER_SCRIPT" "${patcher_args[@]}" "$font_file" 2>/dev/null; then
+        echo "[SUCCESS] 完成: $font_name" >&2
+        return 0
+    else
+        echo "[ERROR] 处理失败: $font_name" >&2
+        return 1
+    fi
+}
+
+# 处理单个字体文件（用于顺序处理）
+process_font_sequential() {
     local font_file="$1"
     local font_name=$(basename "$font_file")
     
@@ -398,24 +423,28 @@ process_fonts_parallel() {
     # 使用 GNU parallel 或者简单的后台任务处理
     if command -v parallel >/dev/null 2>&1; then
         # 使用 GNU parallel
-        export -f process_font print_status print_success print_error print_debug build_patcher_args
+        export -f process_font build_patcher_args
         export PATCHER_SCRIPT GLYPHS_DIR OUTPUT_DIR BUILD_TYPE COMPLETE
         export FONTAWESOME FONTAWESOME_EXT OCTICONS CODICONS POWERLINE POWERLINE_EXTRA
         export MATERIAL WEATHER DEVICONS POMICONS FONTLOGOS POWERSYMBOLS
-        export VERBOSE DRY_RUN BLUE GREEN RED YELLOW PURPLE NC
+        export VERBOSE DRY_RUN
         
-        printf '%s\n' "${font_files[@]}" | parallel -j "$PARALLEL_JOBS" process_font
+        print_status "使用 GNU parallel 并行处理字体..."
         
-        # 统计结果
-        local exit_codes
-        mapfile -t exit_codes < <(parallel --joblog /tmp/font_build.log -j "$PARALLEL_JOBS" process_font ::: "${font_files[@]}")
-        for code in "${exit_codes[@]}"; do
-            if [ "$code" -eq 0 ]; then
-                ((success_count++))
-            else
-                ((error_count++))
-            fi
-        done
+        # 使用 parallel 处理，并收集退出码
+        local temp_results="/tmp/font_build_results_$$"
+        if printf '%s\n' "${font_files[@]}" | parallel -j "$PARALLEL_JOBS" --results "$temp_results" process_font; then
+            # 统计成功的任务
+            success_count=$(find "$temp_results" -name "stdout" -exec grep -l "SUCCESS" {} \; 2>/dev/null | wc -l)
+            error_count=$((total - success_count))
+        else
+            # 如果 parallel 本身失败，统计实际结果
+            success_count=$(find "$temp_results" -name "exitval" -exec cat {} \; 2>/dev/null | grep -c "^0$" || echo 0)
+            error_count=$((total - success_count))
+        fi
+        
+        # 清理临时文件
+        rm -rf "$temp_results" 2>/dev/null
     else
         # 简单的后台任务处理
         local pids=()
@@ -441,7 +470,7 @@ process_fonts_parallel() {
             done
             
             # 启动新任务
-            process_font "$font_file" &
+            process_font_sequential "$font_file" &
             pids+=($!)
             ((job_count++))
         done
@@ -522,7 +551,23 @@ main() {
     echo
     
     # 获取字体文件列表
+    print_status "搜索字体文件..."
     mapfile -t font_files < <(get_font_files)
+    
+    if [ ${#font_files[@]} -eq 0 ]; then
+        print_error "未找到任何字体文件"
+        exit 1
+    fi
+    
+    print_success "找到 ${#font_files[@]} 个字体文件"
+    
+    # 如果是详细模式，列出所有文件
+    if [ "$VERBOSE" = true ]; then
+        print_debug "字体文件列表:"
+        for file in "${font_files[@]}"; do
+            echo "  - $file"
+        done
+    fi
     echo
     
     # 处理字体文件

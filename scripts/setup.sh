@@ -150,20 +150,84 @@ create_directories() {
     print_success "目录结构创建完成"
 }
 
-# 下载 Nerd Font patcher
-download_font_patcher() {
-    print_status "下载 Nerd Font patcher..."
+# 下载 Nerd Font 源码
+download_nerd_fonts() {
+    print_status "下载 Nerd Font 源码..."
     
-    local patcher_url="https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/font-patcher"
-    local patcher_path="src/font-patcher"
+    local src_dir="src"
     
-    if [ ! -f "$patcher_path" ]; then
-        curl -fLo "$patcher_path" "$patcher_url"
-        chmod +x "$patcher_path"
-        print_success "Font patcher 下载完成"
-    else
-        print_warning "Font patcher 已存在，跳过下载"
+    # 如果 src 目录已存在且包含文件，先检查是否是完整的
+    if [ -d "$src_dir" ] && [ "$(ls -A $src_dir 2>/dev/null)" ]; then
+        if [ -f "$src_dir/font-patcher" ] && [ -d "$src_dir/bin/scripts/name_parser" ]; then
+            print_warning "Nerd Font 源码已存在，跳过下载"
+            return
+        else
+            print_warning "源码不完整，重新下载..."
+            rm -rf "$src_dir"
+        fi
     fi
+    
+    # 下载最新的 Nerd Font 源码
+    print_status "正在从 GitHub 下载 Nerd Font 源码..."
+    
+    if command_exists git; then
+        # 使用 git 克隆（推荐，速度快）
+        git clone --depth 1 https://github.com/ryanoasis/nerd-fonts.git temp_nerd_fonts
+        
+        # 只保留我们需要的文件
+        mkdir -p "$src_dir"
+        cp -r temp_nerd_fonts/font-patcher "$src_dir/"
+        cp -r temp_nerd_fonts/bin "$src_dir/"
+        cp -r temp_nerd_fonts/src/glyphs "$src_dir/" 2>/dev/null || true
+        
+        # 清理临时目录
+        rm -rf temp_nerd_fonts
+        
+        chmod +x "$src_dir/font-patcher"
+        print_success "Nerd Font 源码下载完成 (使用 git)"
+    else
+        # 备选方案：下载压缩包
+        print_status "git 不可用，使用备选下载方案..."
+        
+        local archive_url="https://github.com/ryanoasis/nerd-fonts/archive/refs/heads/master.zip"
+        local temp_file="nerd-fonts-master.zip"
+        
+        # 下载压缩包
+        curl -fL "$archive_url" -o "$temp_file"
+        
+        # 检查是否有 unzip 命令
+        if command_exists unzip; then
+            unzip -q "$temp_file"
+            
+            # 移动需要的文件
+            mkdir -p "$src_dir"
+            cp -r nerd-fonts-master/font-patcher "$src_dir/"
+            cp -r nerd-fonts-master/bin "$src_dir/"
+            cp -r nerd-fonts-master/src/glyphs "$src_dir/" 2>/dev/null || true
+            
+            # 清理
+            rm -rf nerd-fonts-master "$temp_file"
+            
+            chmod +x "$src_dir/font-patcher"
+            print_success "Nerd Font 源码下载完成 (使用 zip)"
+        else
+            print_error "需要 git 或 unzip 命令来下载 Nerd Font 源码"
+            exit 1
+        fi
+    fi
+    
+    # 验证关键文件是否存在
+    if [ ! -f "$src_dir/font-patcher" ]; then
+        print_error "font-patcher 下载失败"
+        exit 1
+    fi
+    
+    if [ ! -d "$src_dir/bin/scripts/name_parser" ]; then
+        print_error "FontnameParser 模块下载失败"
+        exit 1
+    fi
+    
+    print_success "所有必需文件下载完成"
 }
 
 # 下载字形文件
@@ -289,13 +353,11 @@ main() {
     create_directories
     echo
     
-    # 下载 font-patcher
-    download_font_patcher
+    # 下载 Nerd Font 源码（包含 font-patcher 和依赖）
+    download_nerd_fonts
     echo
     
-    # 下载字形文件
-    download_glyphs
-    echo
+    # 字形文件已包含在 Nerd Font 源码中
     
     # 验证源字体
     verify_source_fonts

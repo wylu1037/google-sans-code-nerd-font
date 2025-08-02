@@ -162,23 +162,96 @@ function Get-FileFromUrl {
     }
 }
 
-# 下载 Nerd Font patcher
-function Get-FontPatcher {
-    Write-Status "下载 Nerd Font patcher..."
+# 下载 Nerd Font 源码
+function Get-NerdFontSource {
+    Write-Status "下载 Nerd Font 源码..."
     
-    $patcherUrl = "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/font-patcher"
-    $patcherPath = "src\font-patcher"
+    $srcDir = "src"
     
-    if (-not (Test-Path $patcherPath) -or $Force) {
-        if (Get-FileFromUrl -Url $patcherUrl -Path $patcherPath -Description "Font Patcher") {
-            Write-Success "Font patcher 下载完成"
-        } else {
-            Write-Error "Font patcher 下载失败"
+    # 检查是否已经下载完整的源码
+    if ((Test-Path "$srcDir\font-patcher") -and (Test-Path "$srcDir\bin\scripts\name_parser") -and -not $Force) {
+        Write-Warning "Nerd Font 源码已存在，跳过下载 (使用 -Force 强制重新下载)"
+        return
+    }
+    
+    # 如果源码不完整，重新下载
+    if ((Test-Path $srcDir) -and $Force) {
+        Write-Warning "源码不完整，重新下载..."
+        Remove-Item $srcDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    
+    Write-Status "正在从 GitHub 下载 Nerd Font 源码..."
+    
+    if (Test-Command "git") {
+        # 使用 git 克隆（推荐）
+        try {
+            Write-Status "使用 git 下载源码..."
+            & git clone --depth 1 https://github.com/ryanoasis/nerd-fonts.git temp_nerd_fonts
+            
+            # 只保留我们需要的文件
+            New-Item -ItemType Directory -Path $srcDir -Force | Out-Null
+            Copy-Item "temp_nerd_fonts\font-patcher" $srcDir -Force
+            Copy-Item "temp_nerd_fonts\bin" $srcDir -Recurse -Force
+            if (Test-Path "temp_nerd_fonts\src\glyphs") {
+                Copy-Item "temp_nerd_fonts\src\glyphs" $srcDir -Recurse -Force
+            }
+            
+            # 清理临时目录
+            Remove-Item "temp_nerd_fonts" -Recurse -Force
+            
+            Write-Success "Nerd Font 源码下载完成 (使用 git)"
+        }
+        catch {
+            Write-Error "使用 git 下载失败: $($_.Exception.Message)"
             exit 1
         }
-    } else {
-        Write-Warning "Font patcher 已存在，跳过下载 (使用 -Force 强制重新下载)"
     }
+    else {
+        # 备选方案：下载压缩包
+        Write-Status "git 不可用，使用备选下载方案..."
+        
+        $archiveUrl = "https://github.com/ryanoasis/nerd-fonts/archive/refs/heads/master.zip"
+        $tempFile = "nerd-fonts-master.zip"
+        
+        try {
+            # 下载压缩包
+            Invoke-WebRequest -Uri $archiveUrl -OutFile $tempFile -UseBasicParsing
+            
+            # 解压
+            Expand-Archive -Path $tempFile -DestinationPath "." -Force
+            
+            # 移动需要的文件
+            New-Item -ItemType Directory -Path $srcDir -Force | Out-Null
+            Copy-Item "nerd-fonts-master\font-patcher" $srcDir -Force
+            Copy-Item "nerd-fonts-master\bin" $srcDir -Recurse -Force
+            if (Test-Path "nerd-fonts-master\src\glyphs") {
+                Copy-Item "nerd-fonts-master\src\glyphs" $srcDir -Recurse -Force
+            }
+            
+            # 清理
+            Remove-Item "nerd-fonts-master" -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+            
+            Write-Success "Nerd Font 源码下载完成 (使用 zip)"
+        }
+        catch {
+            Write-Error "下载源码失败: $($_.Exception.Message)"
+            exit 1
+        }
+    }
+    
+    # 验证关键文件是否存在
+    if (-not (Test-Path "$srcDir\font-patcher")) {
+        Write-Error "font-patcher 下载失败"
+        exit 1
+    }
+    
+    if (-not (Test-Path "$srcDir\bin\scripts\name_parser")) {
+        Write-Error "FontnameParser 模块下载失败"
+        exit 1
+    }
+    
+    Write-Success "所有必需文件下载完成"
 }
 
 # 下载字形文件
@@ -301,12 +374,11 @@ function Main {
         New-Directories
         Write-Host ""
         
-        # 下载 font-patcher
-        Get-FontPatcher
+        # 下载 Nerd Font 源码（包含 font-patcher 和依赖）
+        Get-NerdFontSource
         Write-Host ""
         
-        # 下载字形文件
-        Get-Glyphs
+        # 字形文件已包含在 Nerd Font 源码中
         Write-Host ""
         
         # 验证源字体
