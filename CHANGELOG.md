@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation in Chinese
 - Python-based single font patcher utility
 
+### Fixed
+- Updated GitHub Actions to latest versions to fix deprecation warnings
+  - `actions/upload-artifact` v3 → v4
+  - `actions/download-artifact` v3 → v4
+  - `actions/cache` v3 → v4
+  - `actions/setup-python` v4 → v5
+
 ### Features
 - ✨ Complete Nerd Font icon integration (3600+ icons)
 - 🔧 Cross-platform compatibility (Linux, macOS, Windows)
