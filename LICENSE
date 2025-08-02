@@ -1,0 +1,96 @@
+MIT License
+
+Copyright (c) 2025 Google Sans Code Nerd Font Project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Third-Party Licenses
+
+This project incorporates fonts and icons from various sources under their respective licenses:
+
+### Google Sans Code Font
+- License: SIL Open Font License 1.1
+- Source: https://fonts.google.com/
+- Copyright: Google Inc.
+
+### Nerd Font Icons
+Various icon sets are included under their respective licenses:
+
+#### Font Awesome
+- License: SIL OFL 1.1 / MIT License / CC BY 4.0
+- Source: https://fontawesome.com/
+- Copyright: Fonticons, Inc.
+
+#### Material Design Icons
+- License: Apache License 2.0
+- Source: https://materialdesignicons.com/
+- Copyright: Google Inc. and contributors
+
+#### Octicons (GitHub Icons)
+- License: MIT License
+- Source: https://octicons.github.com/
+- Copyright: GitHub Inc.
+
+#### Powerline Symbols
+- License: CC BY-SA 4.0
+- Source: https://github.com/powerline/powerline
+- Copyright: Kim Silkebækken and contributors
+
+#### Devicons
+- License: MIT License
+- Source: https://vorillaz.github.io/devicons/
+- Copyright: Theodore Vorillas
+
+#### Weather Icons
+- License: SIL OFL 1.1
+- Source: https://erikflowers.github.io/weather-icons/
+- Copyright: Erik Flowers
+
+#### Codicons (VS Code Icons)
+- License: CC BY 4.0
+- Source: https://github.com/microsoft/vscode-codicons
+- Copyright: Microsoft Corporation
+
+#### Pomicons
+- License: SIL OFL 1.1
+- Source: https://github.com/gabrielelana/pomicons
+- Copyright: Gabriele Lana
+
+#### Font Logos
+- License: Unlicense
+- Source: https://github.com/Lukas-W/font-logos
+- Copyright: Lukas-W and contributors
+
+#### IEC Power Symbols
+- License: Unicode License
+- Source: https://unicodepowersymbol.com/
+- Copyright: Unicode Consortium
+
+### Nerd Fonts Patcher
+- License: MIT License
+- Source: https://github.com/ryanoasis/nerd-fonts
+- Copyright: Ryan L McIntyre
+
+---
+
+## Full License Texts
+
+The full text of all licenses can be found in the LICENSES directory or by visiting the respective project websites listed above.

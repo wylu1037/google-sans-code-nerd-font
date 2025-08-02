@@ -1,0 +1,299 @@
+name: Build Google Sans Code Nerd Fonts
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Google Sans Code/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Google Sans Code/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '构建类型'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - complete
+          - mono
+          - propo
+      upload_artifacts:
+        description: '上传构建产物'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build_type: 
+          - ${{ github.event.inputs.build_type == 'all' && 'complete' || github.event.inputs.build_type || 'complete' }}
+          - ${{ github.event.inputs.build_type == 'all' && 'mono' || '' }}
+          - ${{ github.event.inputs.build_type == 'all' && 'propo' || '' }}
+      fail-fast: false
+    
+    name: Build (${{ matrix.build_type }})
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fontforge python3-fontforge
+        pip install fonttools configparser
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          src/
+          !src/config.json
+        key: nerd-font-deps-${{ hashFiles('scripts/setup.sh') }}
+        restore-keys: |
+          nerd-font-deps-
+    
+    - name: Setup build environment
+      run: |
+        chmod +x scripts/setup.sh
+        ./scripts/setup.sh
+    
+    - name: Verify font files
+      run: |
+        echo "=== 验证源字体文件 ==="
+        find "Google Sans Code" -name "*.ttf" -o -name "*.otf" | sort
+        echo ""
+        echo "=== 字体文件统计 ==="
+        echo "TTF 文件数量: $(find "Google Sans Code" -name "*.ttf" | wc -l)"
+        echo "OTF 文件数量: $(find "Google Sans Code" -name "*.otf" | wc -l)"
+    
+    - name: Build fonts (${{ matrix.build_type }})
+      if: matrix.build_type != ''
+      run: |
+        chmod +x scripts/build.sh
+        case "${{ matrix.build_type }}" in
+          "complete")
+            ./scripts/build.sh --complete --verbose
+            ;;
+          "mono")
+            ./scripts/build.sh --mono --verbose
+            ;;
+          "propo")
+            ./scripts/build.sh --propo --verbose
+            ;;
+          *)
+            echo "未知的构建类型: ${{ matrix.build_type }}"
+            exit 1
+            ;;
+        esac
+    
+    - name: Verify build output
+      if: matrix.build_type != ''
+      run: |
+        echo "=== 构建输出统计 ==="
+        if [ -d "patched-fonts" ]; then
+          echo "输出字体数量: $(find patched-fonts -name "*.ttf" -o -name "*.otf" | wc -l)"
+          echo ""
+          echo "=== 输出文件列表 ==="
+          find patched-fonts -name "*.ttf" -o -name "*.otf" | sort | head -20
+          if [ $(find patched-fonts -name "*.ttf" -o -name "*.otf" | wc -l) -gt 20 ]; then
+            echo "... 还有更多文件"
+          fi
+          echo ""
+          echo "=== 目录大小 ==="
+          du -sh patched-fonts
+        else
+          echo "错误: 未找到输出目录"
+          exit 1
+        fi
+    
+    - name: Prepare artifacts
+      if: matrix.build_type != '' && (github.event.inputs.upload_artifacts == 'true' || github.event_name == 'release')
+      run: |
+        # 创建发布包
+        cd patched-fonts
+        
+        # 按构建类型组织文件
+        BUILD_TYPE="${{ matrix.build_type }}"
+        
+        # 创建压缩包
+        case "$BUILD_TYPE" in
+          "complete")
+            zip -r "../GoogleSansCodeNerdFont-Complete.zip" . -x "*.DS_Store"
+            ;;
+          "mono")
+            zip -r "../GoogleSansCodeNerdFont-Mono.zip" . -x "*.DS_Store"
+            ;;
+          "propo")
+            zip -r "../GoogleSansCodeNerdFont-Propo.zip" . -x "*.DS_Store"
+            ;;
+        esac
+        
+        cd ..
+        
+        # 验证压缩包
+        echo "=== 压缩包信息 ==="
+        ls -lh GoogleSansCodeNerdFont-*.zip 2>/dev/null || echo "未创建压缩包"
+    
+    - name: Upload artifacts
+      if: matrix.build_type != '' && (github.event.inputs.upload_artifacts == 'true' || github.event_name == 'release')
+      uses: actions/upload-artifact@v3
+      with:
+        name: GoogleSansCodeNerdFont-${{ matrix.build_type }}
+        path: |
+          GoogleSansCodeNerdFont-*.zip
+          patched-fonts/
+        retention-days: 30
+
+  release:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+    
+    - name: Prepare release assets
+      run: |
+        mkdir -p release-assets
+        
+        # 移动所有 zip 文件到 release-assets
+        find artifacts -name "*.zip" -exec mv {} release-assets/ \;
+        
+        echo "=== 发布资产 ==="
+        ls -lh release-assets/
+    
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release-assets/*
+        tag_name: ${{ github.ref_name }}
+        name: Google Sans Code Nerd Font ${{ github.ref_name }}
+        body: |
+          ## Google Sans Code Nerd Font ${{ github.ref_name }}
+          
+          ### 📦 下载说明
+          
+          - **Complete**: 包含所有图标的完整版本（推荐）
+          - **Mono**: 等宽图标版本，适合终端使用
+          - **Propo**: 比例宽度图标版本
+          
+          ### 🎯 包含的图标集
+          
+          - Font Awesome (5000+ 图标)
+          - Material Design Icons (7000+ 图标)
+          - Octicons (GitHub 图标)
+          - Powerline Symbols
+          - Devicons (开发者图标)
+          - Weather Icons
+          - Codicons (VS Code 图标)
+          - 以及更多...
+          
+          ### 💾 安装方法
+          
+          1. 下载对应的 zip 文件
+          2. 解压后安装字体文件
+          3. 在您的终端或编辑器中选择 "GoogleSansCodeNerdFont" 字体系列
+          
+          ### 🔧 支持的字重
+          
+          - Regular / Italic
+          - Light / Light Italic
+          - Medium / Medium Italic
+          - SemiBold / SemiBold Italic
+          - Bold / Bold Italic
+          - ExtraBold / ExtraBold Italic
+          
+          ---
+          
+          构建时间: ${{ github.run_id }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+      fail-fast: false
+    
+    name: Test setup on ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fontforge python3-fontforge
+    
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install fontforge
+    
+    - name: Install system dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # 使用 Chocolatey 安装 FontForge
+        choco install fontforge -y
+      shell: powershell
+    
+    - name: Install Python dependencies
+      run: |
+        pip install fonttools configparser
+    
+    - name: Test setup script (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        chmod +x scripts/setup.sh
+        # 只验证脚本语法，不实际下载
+        bash -n scripts/setup.sh
+        chmod +x scripts/build.sh
+        bash -n scripts/build.sh
+    
+    - name: Test setup script (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # 验证 PowerShell 脚本语法
+        Get-Command .\scripts\setup.ps1
+        Get-Command .\scripts\build.ps1
+      shell: powershell
+    
+    - name: Verify dependencies
+      run: |
+        python --version
+        pip list | grep fonttools || echo "fonttools not found"
+      shell: bash
