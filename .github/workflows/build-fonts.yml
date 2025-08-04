@@ -67,15 +67,17 @@ jobs:
           -v "$INPUT_DIR":/in \
           -v "$OUTPUT_DIR":/out \
           nerdfonts/patcher:latest \
-          --complete \
-          --careful \
-          --progressbars \
           --name "Google Sans Code Nerd" \
-          --outputdir /out
+          --complete \
+          --quiet
         
         # Show processing results
         echo "Processed font files:"
         ls -la "$OUTPUT_DIR"/
+        
+        # Debug: Check what fonts were actually generated
+        echo "Checking generated font names:"
+        find "$OUTPUT_DIR" -name "*.ttf" -exec basename {} \;
         
     - name: Verify patched fonts
       run: |
