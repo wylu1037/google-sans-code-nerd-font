@@ -67,7 +67,6 @@ jobs:
           -v "$INPUT_DIR":/in \
           -v "$OUTPUT_DIR":/out \
           nerdfonts/patcher:latest \
-          --name "Google Sans Code Nerd" \
           --complete \
           --quiet
         
