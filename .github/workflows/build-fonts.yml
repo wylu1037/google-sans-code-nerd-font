@@ -143,7 +143,7 @@ jobs:
               if [ -f "$output_file" ]; then
                 file_size=$(stat -c%s "$output_file")
                 echo "✅ Successfully ligaturized: $font_name (${file_size} bytes)"
-                ((processed_count++))
+                processed_count=$((processed_count + 1))
               else
                 echo "❌ Output file not created: $font_name"
                 exit 1
