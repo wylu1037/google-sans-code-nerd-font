@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Google Sans Code Nerd Font Build Test Script
+# Google Sans Code Nerd Font Build Test Script with Ligature Support
 # Used to verify the font processing workflow locally
 
 set -e  # Exit on error
 
-echo "🚀 Starting the Google Sans Code Nerd Font build process test..."
+echo "🚀 Starting the Google Sans Code Nerd Font + Ligatures build process test..."
 
 # Check for necessary tools
 check_dependencies() {
@@ -142,6 +142,7 @@ main() {
     echo "1. Commit and push your changes to GitHub"
     echo "2. Check the Actions tab to see the build status"
     echo "3. Download the font files from the Artifacts after the build is complete"
+    echo "4. Test ligatures using scripts/ligature-test.txt"
     echo ""
     
     # In CI environments, always clean up. Otherwise, ask the user.

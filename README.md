@@ -2,12 +2,25 @@
 
 **English** | [中文](README_zh.md)
 
-An open-source project that adds Nerd Font icon support to Google Sans Code font.
+An open-source project that adds **programming ligatures** and **Nerd Font icon support** to Google Sans Code font.
 
 ## 📖 About
 
-Google Sans Code is an excellent programming font from Google, but there's no official Nerd Font version. This project uses the official Nerd Font patcher to add 3600+ icons to all weights of Google Sans Code, including:
+Google Sans Code is an excellent programming font from Google, but there's no official version with programming ligatures and Nerd Font icons. This project combines:
 
+1. **Programming Ligatures** from [Fira Code](https://github.com/tonsky/FiraCode) using [Ligaturizer](https://github.com/ToxicFrog/ligaturizer)
+2. **3600+ Programming Icons** using the official [Nerd Font patcher](https://github.com/ryanoasis/nerd-fonts)
+
+The result is a feature-complete programming font with:
+
+**Programming Ligatures:**
+- ➤ Arrow operators: `->`, `=>`, `<->`, `<=>`, `==>`, `<==`
+- ⚖️ Comparison operators: `==`, `!=`, `<=`, `>=`, `===`, `!==`
+- 🔗 Logic operators: `&&`, `||`, `!!`, `?.`, `??`
+- ➕ Math operators: `+=`, `-=`, `*=`, `/=`, `%=`
+- 📝 Comment styles: `/*`, `*/`, `/**`, `*/`, `///`
+
+**Programming Icons:**
 - 🎯 Font Awesome  
 - 📦 Material Design Icons  
 - 🐙 Octicons (GitHub)
@@ -147,6 +160,13 @@ To solve compatibility issues with `python3-fontforge` in Ubuntu 24.04, we adopt
 - ✅ Perfect terminal and editor compatibility
 - ✅ Maintains excellent readability of original font
 
+### Ligature Support
+
+- ✅ 150+ programming ligatures from Fira Code
+- ✅ Arrow operators, comparison operators, and logic symbols
+- ✅ Automatic activation in supported editors
+- ✅ Preserves original font spacing and readability
+
 ## 🛠️ Usage Instructions
 
 ### Terminal Configuration
@@ -160,7 +180,8 @@ After installing the fonts, set the font family in your terminal to:
 **VS Code:**
 ```json
 {
-  "editor.fontFamily": "'Google Sans Code NF', 'Google Sans Code', monospace"
+  "editor.fontFamily": "'Google Sans Code NF', 'Google Sans Code', monospace",
+  "editor.fontLigatures": true
 }
 ```
 
@@ -169,6 +190,18 @@ After installing the fonts, set the font family in your terminal to:
 set guifont=Google\ Sans\ Code\ NF:h12
 ```
 
+### Testing Ligatures
+
+Use the test file `scripts/ligature-test.txt` to verify ligature functionality:
+
+```bash
+# Test common programming ligatures
+-> => <-> <=> == != <= >= && || !! 
++= -= *= /= %= /* */ /** */ ///
+```
+
+If these appear as single connected symbols, ligatures are working correctly!
+
 ## 🔧 Troubleshooting
 
 ### Font Display Issues
@@ -176,6 +209,8 @@ set guifont=Google\ Sans\ Code\ NF:h12
 1. **Icons display as squares**: Confirm you installed the Nerd Font version
 2. **Font not taking effect**: Restart application or clear font cache
 3. **Spacing issues**: Use monospace version (Mono)
+4. **Ligatures not working**: Ensure `editor.fontLigatures: true` is set in your editor
+5. **Ligatures appear broken**: Verify you're using "Google Sans Code NF" font family name
 
 ### Build Issues
 
@@ -206,6 +241,8 @@ Issues and Pull Requests are welcome!
 - [Google Sans Code Official Repository](https://github.com/googlefonts/googlesans-code)
 - [Nerd Fonts Project](https://github.com/ryanoasis/nerd-fonts)
 - [Font Patcher Documentation](https://github.com/ryanoasis/nerd-fonts#font-patcher)
+- [Ligaturizer Project](https://github.com/ToxicFrog/ligaturizer)
+- [Fira Code Ligatures](https://github.com/tonsky/FiraCode)
 
 ---
 
