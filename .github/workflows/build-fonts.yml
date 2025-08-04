@@ -57,9 +57,31 @@ jobs:
         
         # Download Fira Code for ligature source
         mkdir -p fonts/fira/distr/otf
-        curl -L https://github.com/tonsky/FiraCode/releases/download/6.2/FiraCode_6.2.zip -o FiraCode.zip
+        echo "Downloading FiraCode..."
+        curl -L https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip -o FiraCode.zip
+        
+        # Verify download and extract
+        echo "Verifying downloaded file..."
+        file FiraCode.zip
+        ls -la FiraCode.zip
+        
+        echo "Extracting FiraCode..."
         unzip -q FiraCode.zip "otf/*" -d temp/
-        mv temp/otf/* fonts/fira/distr/otf/
+        
+        # Check if extraction was successful
+        echo "Checking extracted files..."
+        ls -la temp/
+        
+        if [ -d "temp/otf" ]; then
+          mv temp/otf/* fonts/fira/distr/otf/
+        else
+          echo "Error: OTF directory not found in extracted files"
+          echo "Contents of temp directory:"
+          find temp -type f -name "*.otf" | head -10
+          # Try to find OTF files in any subdirectory
+          find temp -name "*.otf" -exec cp {} fonts/fira/distr/otf/ \;
+        fi
+        
         rm -rf temp FiraCode.zip
         
         # Make ligaturize script executable
