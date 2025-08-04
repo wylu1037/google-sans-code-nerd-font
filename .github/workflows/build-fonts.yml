@@ -136,6 +136,84 @@ jobs:
         name: google-sans-code-nerd-font
         path: output/patched-fonts/
         retention-days: 90
+        
+    - name: Create release (on main branch)
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      id: create_release
+      run: |
+        # Generate version tag based on date
+        VERSION_TAG="v$(date +%Y.%m.%d)-$(date +%H%M)"
+        echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_OUTPUT
+        
+        # Create release notes
+        cat > release_notes.md << 'EOL'
+        ## Google Sans Code Nerd Font Release
+        
+        ### 📦 What's Included
+        - **All Google Sans Code weights**: Light, Regular, Medium, SemiBold, Bold, ExtraBold
+        - **Italic variants**: Complete italic support for all weights
+        - **3600+ Nerd Font icons**: Programming, devops, and UI icons
+        
+        ### 🚀 Installation
+        
+        #### macOS (Homebrew)
+        ```bash
+        brew install --cask google-sans-code-nerd-font
+        ```
+        
+        #### Manual Installation
+        1. Download `GoogleSansCodeNerdFont.zip`
+        2. Extract all `.ttf` files
+        3. Double-click to install fonts
+        4. Select `GoogleSansCodeNerdFont` in your terminal/editor
+        
+        ### 🔧 Technical Details
+        - **Font Format**: TrueType (.ttf)
+        - **Icon Sets**: Font Awesome, Material Design, Octicons, Powerline, Devicons, Weather, Codicons, Pomicons, Font Logos
+        - **Character Count**: 3600+ icons + original Google Sans Code characters
+        
+        ### 📋 Font Files
+        EOL
+        
+        # List font files in release notes
+        cd output/patched-fonts
+        echo "" >> ../../release_notes.md
+        for font in *.ttf; do
+          if [ -f "$font" ]; then
+            size=$(stat -c%s "$font" 2>/dev/null || stat -f%z "$font" 2>/dev/null)
+            size_mb=$(echo "scale=1; $size/1024/1024" | bc -l 2>/dev/null || echo "unknown")
+            echo "- \`$font\` (${size_mb}MB)" >> ../../release_notes.md
+          fi
+        done
+        
+        cd ../..
+        echo "" >> release_notes.md
+        echo "**Build Date**: $(date)" >> release_notes.md
+        echo "**Build Environment**: GitHub Actions" >> release_notes.md
+        
+    - name: Create GitHub Release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/create-release@v1
+      id: create_github_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.create_release.outputs.VERSION_TAG }}
+        release_name: "Google Sans Code Nerd Font ${{ steps.create_release.outputs.VERSION_TAG }}"
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+        
+    - name: Upload release assets
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_github_release.outputs.upload_url }}
+        asset_path: output/GoogleSansCodeNerdFont-*.zip
+        asset_name: GoogleSansCodeNerdFont.zip
+        asset_content_type: application/zip
 
   test-nerd-fonts:
     needs: build-fonts

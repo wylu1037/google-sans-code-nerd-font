@@ -21,14 +21,27 @@ Google Sans Code is an excellent programming font from Google, but there's no of
 
 ## 🚀 Quick Start
 
-### Method 1: Download Pre-built Fonts (Recommended)
+### Method 1: Homebrew (macOS) - Recommended
 
+```bash
+# Install via Homebrew Cask
+brew install --cask google-sans-code-nerd-font
+```
+
+### Method 2: Download Pre-built Fonts
+
+#### Option A: GitHub Releases (Recommended)
+1. Visit the [Releases](../../releases/latest) page
+2. Download `GoogleSansCodeNerdFont.zip`
+3. Extract and install font files
+
+#### Option B: GitHub Actions Artifacts
 1. Visit the [GitHub Actions](../../actions) page
 2. Click the latest successful build
 3. Download `google-sans-code-nerd-font` from "Artifacts" section
 4. Extract and install font files
 
-### Method 2: Local Build
+### Method 3: Local Build
 
 #### Prerequisites
 

@@ -21,14 +21,27 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 
 ## 🚀 快速开始
 
-### 方法1：下载预构建字体（推荐）
+### 方法1：Homebrew（macOS）- 推荐
 
+```bash
+# 通过 Homebrew Cask 安装
+brew install --cask google-sans-code-nerd-font
+```
+
+### 方法2：下载预构建字体
+
+#### 选项A：GitHub Releases（推荐）
+1. 访问 [Releases](../../releases/latest) 页面
+2. 下载 `GoogleSansCodeNerdFont.zip`
+3. 解压并安装字体文件
+
+#### 选项B：GitHub Actions Artifacts
 1. 访问 [GitHub Actions](../../actions) 页面
 2. 点击最新的成功构建
 3. 在 "Artifacts" 部分下载 `google-sans-code-nerd-font`
 4. 解压并安装字体文件
 
-### 方法2：本地构建
+### 方法3：本地构建
 
 #### 前置要求
 
