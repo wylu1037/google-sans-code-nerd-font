@@ -134,5 +134,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: google-sans-code-nerd-font
-        path: output/
+        path: output/patched-fonts/
         retention-days: 90
