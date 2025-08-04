@@ -53,8 +53,6 @@ def ligaturize_font(input_font_path, ligature_font_path, output_path):
             print("   - pip3 install fontforge-python (if available)")
 
             # Last resort: try direct import with PYTHONPATH
-            import os
-
             if "PYTHONPATH" in os.environ:
                 print(f"   PYTHONPATH: {os.environ['PYTHONPATH']}")
             else:
