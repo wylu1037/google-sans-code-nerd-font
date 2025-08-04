@@ -63,35 +63,41 @@ jobs:
         # Using --complete flag to include all icon sets as recommended by Nerd Fonts
         # Source: https://github.com/ryanoasis/nerd-fonts
         # This adds 3600+ icons from Font Awesome, Material Design, Octicons, etc.
-        # Process each font file individually to preserve style names (Bold, Light, etc.)
-        for font_file in "$INPUT_DIR"/*.ttf; do
-          if [ -f "$font_file" ]; then
-            font_name=$(basename "$font_file")
-            echo "Processing: $font_name"
-            
-            # Extract style from filename (Bold, Light, Italic, etc.)
-            style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
-            echo "Detected style: $style"
-            
-            # Create temporary directory for single font processing
-            temp_input_dir=$(mktemp -d)
-            cp "$font_file" "$temp_input_dir/"
-            
-            # Process with custom family name but preserve style
-            docker run --rm \
-              -v "$temp_input_dir":/in \
-              -v "$OUTPUT_DIR":/out \
-              nerdfonts/patcher:latest \
-              --complete \
-              --quiet \
-              --name "Google\ Sans\ Code\ NF\ $style"
-            
-            # Clean up temporary directory
-            rm -rf "$temp_input_dir"
-            
-            echo "Completed processing: $font_name -> Google Sans Code NF $style"
-          fi
-        done
+        # Function to process a single font file
+        process_font() {
+          local font_file="$1"
+          local font_name=$(basename "$font_file")
+          echo "Processing: $font_name"
+          
+          # Extract style from filename (Bold, Light, Italic, etc.)
+          local style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
+          echo "Detected style: $style"
+          
+          # Create temporary directory for single font processing
+          local temp_input_dir=$(mktemp -d)
+          cp "$font_file" "$temp_input_dir/"
+          
+          # Process with custom family name but preserve style
+          docker run --rm \
+            -v "$temp_input_dir":/in \
+            -v "$OUTPUT_DIR":/out \
+            nerdfonts/patcher:latest \
+            --complete \
+            --quiet \
+            --name "Google\ Sans\ Code\ NF\ $style"
+          
+          # Clean up temporary directory
+          rm -rf "$temp_input_dir"
+          
+          echo "Completed processing: $font_name -> Google Sans Code NF $style"
+        }
+        
+        # Export function for parallel execution
+        export -f process_font
+        export OUTPUT_DIR
+        
+        # Process fonts in parallel (4 concurrent jobs for better performance)
+        find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'process_font "$@"' _ {}
 
         # Show processing results
         echo "Processed font files:"
