@@ -2,10 +2,10 @@ cask "google-sans-code-nerd-font" do
   version :latest
   sha256 :no_check
 
-  url "https://github.com/wenyanglu/google-sans-code-nerd-font/releases/latest/download/GoogleSansCodeNerdFont.zip"
+  url "https://github.com/wylu1037/google-sans-code-nerd-font/releases/latest/download/GoogleSansCodeNerdFont.zip"
   name "Google Sans Code Nerd Font"
   desc "Google Sans Code font patched with Nerd Fonts"
-  homepage "https://github.com/wenyanglu/google-sans-code-nerd-font"
+  homepage "https://github.com/wylu1037/google-sans-code-nerd-font"
 
   livecheck do
     url :url
@@ -39,7 +39,7 @@ cask "google-sans-code-nerd-font" do
       - Powerline Symbols, Devicons, Weather Icons
       - Codicons, Pomicons, Font Logos, and more
       
-      For more information: https://github.com/wenyanglu/google-sans-code-nerd-font
+      For more information: https://github.com/wylu1037/google-sans-code-nerd-font
     EOS
   end
 end
