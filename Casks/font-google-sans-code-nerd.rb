@@ -2,7 +2,7 @@ cask "font-google-sans-code-nerd" do
   version :latest
   sha256 :no_check
 
-  url "https://github.com/wylu1037/google-sans-code-nerd-font/releases/download/v1.0.0/google-sans-code-nerd-font.zip"
+  url "https://github.com/wylu1037/google-sans-code-nerd-font/releases/latest/download/GoogleSansCodeNerdFont.zip"
   name "Google Sans Code Nerd Font"
   desc "Google Sans Code font patched with Nerd Fonts"
   homepage "https://github.com/wylu1037/google-sans-code-nerd-font"
@@ -12,18 +12,18 @@ cask "font-google-sans-code-nerd" do
     strategy :github_latest
   end
 
-  font "Google Sans Code Nerd Bold.ttf"
-  font "Google Sans Code Nerd Bold Italic.ttf"
-  font "Google Sans Code Nerd ExtraBold.ttf"
-  font "Google Sans Code Nerd ExtraBold Italic.ttf"
-  font "Google Sans Code Nerd Italic.ttf"
-  font "Google Sans Code Nerd Light.ttf"
-  font "Google Sans Code Nerd Light Italic.ttf"
-  font "Google Sans Code Nerd Medium.ttf"
-  font "Google Sans Code Nerd Medium Italic.ttf"
-  font "Google Sans Code Nerd Regular.ttf"
-  font "Google Sans Code Nerd SemiBold.ttf"
-  font "Google Sans Code Nerd SemiBold Italic.ttf"
+  font "GoogleSansCodeNerdComplete-Bold.ttf"
+  font "GoogleSansCodeNerdComplete-BoldItalic.ttf"
+  font "GoogleSansCodeNerdComplete-ExtraBold.ttf"
+  font "GoogleSansCodeNerdComplete-ExtraBoldItalic.ttf"
+  font "GoogleSansCodeNerdComplete-Italic.ttf"
+  font "GoogleSansCodeNerdComplete-Light.ttf"
+  font "GoogleSansCodeNerdComplete-LightItalic.ttf"
+  font "GoogleSansCodeNerdComplete-Medium.ttf"
+  font "GoogleSansCodeNerdComplete-MediumItalic.ttf"
+  font "GoogleSansCodeNerdComplete-Regular.ttf"
+  font "GoogleSansCodeNerdComplete-SemiBold.ttf"
+  font "GoogleSansCodeNerdComplete-SemiBoldItalic.ttf"
 
   # Optional: Add caveats for installation instructions
   caveats do
