@@ -68,25 +68,19 @@ jobs:
         echo "Extracting FiraCode..."
         unzip -q FiraCode.zip -d temp/
         
-        # Check if extraction was successful and find OTF files
-        echo "Checking extracted files..."
-        ls -la temp/
-        echo "Looking for OTF files..."
-        find temp -name "*.otf" | head -10
+        # FiraCode 6.2 only has TTF files, but Ligaturizer expects OTF
+        # We'll copy TTF files to the OTF directory with .otf extension
+        echo "Setting up FiraCode files for Ligaturizer..."
+        ls -la temp/ttf/
         
-        # Copy all OTF files to the destination directory
-        otf_count=$(find temp -name "*.otf" | wc -l)
-        echo "Found $otf_count OTF files"
-        
-        if [ $otf_count -gt 0 ]; then
-          find temp -name "*.otf" -exec cp {} fonts/fira/distr/otf/ \;
-          echo "Successfully copied OTF files"
-        else
-          echo "Error: No OTF files found in the archive"
-          echo "Archive contents:"
-          find temp -type f | head -20
-          exit 1
-        fi
+        # Copy TTF files and rename them to .otf for Ligaturizer compatibility
+        for ttf_file in temp/ttf/*.ttf; do
+          if [ -f "$ttf_file" ]; then
+            filename=$(basename "$ttf_file" .ttf)
+            echo "Copying $filename.ttf as $filename.otf"
+            cp "$ttf_file" "fonts/fira/distr/otf/$filename.otf"
+          fi
+        done
         
         rm -rf temp FiraCode.zip
         
