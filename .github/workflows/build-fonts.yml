@@ -64,14 +64,11 @@ jobs:
         # Source: https://github.com/ryanoasis/nerd-fonts
         # This adds 3600+ icons from Font Awesome, Material Design, Octicons, etc.
         docker run --rm \
-          -v "$INPUT_DIR":/in:Z \
-          -v "$OUTPUT_DIR":/out:Z \
+          -v "$INPUT_DIR":/in \
+          -v "$OUTPUT_DIR":/out \
           nerdfonts/patcher:latest \
           --complete \
-          --quiet \
-          --careful \
-          --progressbars \
-          --name "Google Sans Code NF"
+          --quiet
 
         # Show processing results
         echo "Processed font files:"
