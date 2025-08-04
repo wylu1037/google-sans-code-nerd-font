@@ -72,8 +72,9 @@ jobs:
         # Extract Fira Code
         unzip temp/FiraCode.zip -d temp/fira-code/
         
-        # Find the Regular weight TTF for ligature extraction
-        find temp/fira-code -name "*Regular.ttf" -type f
+        # Find both TTF and OTF files, prefer OTF for better ligature support
+        echo "📋 Available Fira Code files:"
+        find temp/fira-code -name "*Regular.*" -type f
         
         echo "✅ Fira Code downloaded successfully"
         
@@ -114,8 +115,11 @@ jobs:
             exit(1)
         "
         
-        # Find Fira Code Regular font for ligature source
-        FIRA_CODE_FONT=$(find temp/fira-code -name "*Regular.ttf" -type f | head -1)
+        # Find Fira Code Regular font for ligature source, prefer OTF over TTF
+        FIRA_CODE_FONT=$(find temp/fira-code -name "*Regular.otf" -type f | head -1)
+        if [ -z "$FIRA_CODE_FONT" ]; then
+          FIRA_CODE_FONT=$(find temp/fira-code -name "*Regular.ttf" -type f | head -1)
+        fi
         echo "Using Fira Code font: $FIRA_CODE_FONT"
         
         if [ ! -f "$FIRA_CODE_FONT" ]; then
@@ -135,18 +139,14 @@ jobs:
             # Create ligaturized version
             output_file="output/ligaturized-fonts/${font_name}"
             
-            if fontforge -lang=py -script scripts/ligaturize.py \
+            if $PYTHON_CMD scripts/ligaturize.py \
               "$font_file" \
-              --ligature-font-file="$FIRA_CODE_FONT" \
-              --output-dir="$(dirname "$output_file")" \
-              --output-name="Google Sans Code"; then
+              "$FIRA_CODE_FONT" \
+              "$output_file"; then
               
-              # Find the generated ligaturized font file
-              ligaturized_file=$(find "$(dirname "$output_file")" -name "GoogleSansCode*.ttf" -newer "$font_file" | head -1)
-              
-              if [ -f "$ligaturized_file" ]; then
-                file_size=$(stat -c%s "$ligaturized_file")
-                echo "✅ Successfully ligaturized: $font_name -> $(basename "$ligaturized_file") (${file_size} bytes)"
+              if [ -f "$output_file" ]; then
+                file_size=$(stat -c%s "$output_file")
+                echo "✅ Successfully ligaturized: $font_name (${file_size} bytes)"
                 processed_count=$((processed_count + 1))
               else
                 echo "❌ Output file not created: $font_name"
