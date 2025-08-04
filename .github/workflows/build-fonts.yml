@@ -31,14 +31,54 @@ jobs:
     - name: Install FontForge and setup ligature environment
       run: |
         # Install FontForge for ligature processing
+        echo "📦 Installing FontForge and dependencies..."
         sudo apt-get update
-        sudo apt-get install -y fontforge python3-fontforge curl unzip
+        sudo apt-get install -y fontforge python3-fontforge curl unzip python3-pip
+        
+        # Fix FontForge Python binding issues in Ubuntu 24.04
+        echo "🔧 Fixing FontForge Python bindings..."
+        
+        # Method 1: Try direct Python path setup
+        export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
+        
+        # Method 2: Create symbolic link if needed
+        PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+        FONTFORGE_PATH="/usr/lib/python3/dist-packages"
+        SITE_PACKAGES="/usr/local/lib/python${PYTHON_VERSION}/site-packages"
+        
+        if [ -f "$FONTFORGE_PATH/fontforge.so" ] && [ ! -f "$SITE_PACKAGES/fontforge.so" ]; then
+          echo "Creating symbolic link for fontforge module..."
+          sudo mkdir -p "$SITE_PACKAGES"
+          sudo ln -sf "$FONTFORGE_PATH/fontforge.so" "$SITE_PACKAGES/fontforge.so"
+          sudo ln -sf "$FONTFORGE_PATH/psMat.so" "$SITE_PACKAGES/psMat.so" 2>/dev/null || true
+        fi
+        
+        # Method 3: Alternative installation via pip if available
+        if ! python3 -c "import fontforge" 2>/dev/null; then
+          echo "Trying alternative FontForge installation..."
+          # Try installing fontforge-python if available
+          pip3 install fontforge-python 2>/dev/null || true
+        fi
         
         # Verify FontForge installation
+        echo "🔍 Verifying FontForge installation..."
         fontforge --version
-        python3 -c "import fontforge; print('FontForge Python module imported successfully')"
+        
+        # Test Python import with detailed error information
+        echo "🐍 Testing FontForge Python import..."
+        if python3 -c "import fontforge; print('✅ FontForge Python module imported successfully')"; then
+          echo "FontForge Python bindings working correctly"
+        else
+          echo "❌ FontForge Python import failed - this is required for ligature processing"
+          echo "Python path: $PYTHONPATH"
+          echo "Available Python packages:"
+          find /usr/lib/python3* -name "*fontforge*" 2>/dev/null || true
+          find /usr/local/lib/python* -name "*fontforge*" 2>/dev/null || true
+          exit 1
+        fi
         
         # GitHub Actions environment already has Docker pre-installed
+        echo "🐳 Setting up Docker environment..."
         # Pull the official Nerd Font patcher Docker image
         docker pull nerdfonts/patcher:latest
         
@@ -122,24 +162,32 @@ jobs:
           
           echo "🔗 Ligaturizing: $font_name"
           
-          if python3 "$LIGATURIZER_SCRIPT" "$input_font" "$FIRA_SOURCE" "$output_font"; then
+          # Ensure PYTHONPATH is set for FontForge
+          export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
+          
+          # FontForge availability should have been verified in setup step
+          # Process the font and capture detailed output
+          if python3 "$LIGATURIZER_SCRIPT" "$input_font" "$FIRA_SOURCE" "$output_font" 2>&1; then
             echo "✅ Successfully ligaturized: $font_name"
+            
             # Verify output file exists and has reasonable size
             if [ -f "$output_font" ]; then
               size=$(stat -c%s "$output_font")
               echo "   Output size: $size bytes"
               if [ $size -lt 100000 ]; then  # Less than 100KB is suspicious
-                echo "⚠️  Warning: Output file seems too small"
+                echo "❌ Error: Output file too small ($size bytes) - ligaturization likely failed"
+                echo "   Expected size should be > 100KB for a valid font file"
+                return 1
               fi
             else
-              echo "❌ Output file not created: $output_font"
+              echo "❌ Error: Output file not created: $output_font"
               return 1
             fi
           else
-            echo "❌ Failed to ligaturize: $font_name"
-            # Fallback: copy original font for Nerd Font processing
-            echo "📋 Copying original font as fallback"
-            cp "$input_font" "$output_font"
+            echo "❌ Error: Ligaturization failed for $font_name"
+            echo "Debug info:"
+            python3 "$LIGATURIZER_SCRIPT" "$input_font" "$FIRA_SOURCE" "$output_font" || true
+            return 1
           fi
         }
         
@@ -148,17 +196,32 @@ jobs:
         export LIGATURIZED_DIR FIRA_SOURCE LIGATURIZER_SCRIPT
         
         # Process fonts in parallel (2 concurrent jobs to avoid memory issues)
-        find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 2 bash -c 'ligaturize_font "$@"' _ {}
+        # Use xargs with --exit flag to stop on first failure
+        if find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 2 --exit bash -c 'ligaturize_font "$@"' _ {}; then
+          echo "✅ All fonts ligaturized successfully"
+        else
+          echo "❌ Ligaturization failed for one or more fonts"
+          echo "🔍 Checking partial results..."
+          ls -la "$LIGATURIZED_DIR"/ || true
+          exit 1
+        fi
         
         # Show ligaturization results
         echo "📊 Ligaturized font files:"
         ls -la "$LIGATURIZED_DIR"/
         
         ligaturized_count=$(find "$LIGATURIZED_DIR" -name "*.ttf" | wc -l)
-        echo "Generated $ligaturized_count ligaturized fonts"
+        input_count=$(find "$INPUT_DIR" -name "*.ttf" | wc -l)
+        echo "Generated $ligaturized_count ligaturized fonts from $input_count input fonts"
         
         if [ $ligaturized_count -eq 0 ]; then
           echo "❌ No ligaturized fonts generated"
+          exit 1
+        fi
+        
+        if [ $ligaturized_count -ne $input_count ]; then
+          echo "❌ Mismatch: Expected $input_count fonts, got $ligaturized_count"
+          echo "Some fonts failed ligaturization"
           exit 1
         fi
         
@@ -175,12 +238,10 @@ jobs:
         
         # List ligaturized fonts to process
         echo "Ligaturized fonts to process:"
-        ls -la "$LIGATURIZED_DIR"/*.ttf || {
-          echo "❌ No ligaturized fonts found, falling back to original fonts"
-          LIGATURIZED_DIR=$(realpath data/google-sans-code/static)
-          echo "Using original fonts from: $LIGATURIZED_DIR"
-          ls -la "$LIGATURIZED_DIR"/*.ttf
-        }
+        if ! ls -la "$LIGATURIZED_DIR"/*.ttf; then
+          echo "❌ No ligaturized fonts found - ligaturization step must have failed"
+          exit 1
+        fi
         
         # Process ligaturized fonts using official Nerd Fonts patcher Docker image
         # Using --complete flag to include all icon sets as recommended by Nerd Fonts
