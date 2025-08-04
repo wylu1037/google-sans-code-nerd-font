@@ -1,4 +1,4 @@
-cask "google-sans-code-nerd-font" do
+cask "font-google-sans-code-nerd" do
   version :latest
   sha256 :no_check
 
@@ -12,18 +12,18 @@ cask "google-sans-code-nerd-font" do
     strategy :github_latest
   end
 
-  font "GoogleSansCodeNerdFont-Bold.ttf"
-  font "GoogleSansCodeNerdFont-BoldItalic.ttf"
-  font "GoogleSansCodeNerdFont-ExtraBold.ttf"
-  font "GoogleSansCodeNerdFont-ExtraBoldItalic.ttf"
-  font "GoogleSansCodeNerdFont-Italic.ttf"
-  font "GoogleSansCodeNerdFont-Light.ttf"
-  font "GoogleSansCodeNerdFont-LightItalic.ttf"
-  font "GoogleSansCodeNerdFont-Medium.ttf"
-  font "GoogleSansCodeNerdFont-MediumItalic.ttf"
-  font "GoogleSansCodeNerdFont-Regular.ttf"
-  font "GoogleSansCodeNerdFont-SemiBold.ttf"
-  font "GoogleSansCodeNerdFont-SemiBoldItalic.ttf"
+  font "Google Sans Code Nerd Bold.ttf"
+  font "Google Sans Code Nerd Bold Italic.ttf"
+  font "Google Sans Code Nerd ExtraBold.ttf"
+  font "Google Sans Code Nerd ExtraBold Italic.ttf"
+  font "Google Sans Code Nerd Italic.ttf"
+  font "Google Sans Code Nerd Light.ttf"
+  font "Google Sans Code Nerd Light Italic.ttf"
+  font "Google Sans Code Nerd Medium.ttf"
+  font "Google Sans Code Nerd Medium Italic.ttf"
+  font "Google Sans Code Nerd Regular.ttf"
+  font "Google Sans Code Nerd SemiBold.ttf"
+  font "Google Sans Code Nerd SemiBold Italic.ttf"
 
   # Optional: Add caveats for installation instructions
   caveats do

@@ -24,7 +24,10 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 ### 方法1：Homebrew（macOS）- 推荐
 
 ```bash
-# 通过 Homebrew Cask 安装
+# 官方 Homebrew cask-fonts（首选）
+brew install font-google-sans-code-nerd
+
+# 备选：直接 cask 安装
 brew install --cask google-sans-code-nerd-font
 ```
 
@@ -149,7 +152,7 @@ done
 ### 终端配置
 
 安装字体后，在终端中设置字体族为：
-- **字体名称**: `GoogleSansCodeNerdFont`
+- **字体名称**: `Google Sans Code Nerd`
 - **备选名称**: `GoogleSansCode Nerd Font`
 
 ### 编辑器配置
@@ -157,13 +160,13 @@ done
 **VS Code:**
 ```json
 {
-  "editor.fontFamily": "'GoogleSansCodeNerdFont', 'Google Sans Code', monospace"
+  "editor.fontFamily": "'Google Sans Code Nerd', 'Google Sans Code', monospace"
 }
 ```
 
 **Vim/Neovim:**
 ```vim
-set guifont=GoogleSansCodeNerdFont:h12
+set guifont=Google\ Sans\ Code\ Nerd:h12
 ```
 
 ## 🔧 故障排除

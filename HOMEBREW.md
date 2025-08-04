@@ -2,6 +2,12 @@
 
 ## Quick Installation
 
+### Official Homebrew Fonts (Recommended)
+```bash
+brew install font-google-sans-code-nerd
+```
+
+### Alternative: Direct Cask
 ```bash
 brew install --cask google-sans-code-nerd-font
 ```
@@ -29,13 +35,13 @@ After installation, you can use the font in:
 
 ### Terminal Applications
 Set your terminal font to:
-- **Font Name**: `GoogleSansCodeNerdFont`
-- **Family Name**: `Google Sans Code Nerd Font`
+- **Font Name**: `Google Sans Code Nerd`
+- **Family Name**: `Google Sans Code Nerd`
 
 ### Text Editors & IDEs
-- VS Code: `"editor.fontFamily": "GoogleSansCodeNerdFont"`
-- Sublime Text: `"font_face": "GoogleSansCodeNerdFont"`
-- Vim/Neovim: `set guifont=GoogleSansCodeNerdFont:h12`
+- VS Code: `"editor.fontFamily": "'Google Sans Code Nerd'"`
+- Sublime Text: `"font_face": "Google Sans Code Nerd"`
+- Vim/Neovim: `set guifont=Google\ Sans\ Code\ Nerd:h12`
 
 ## Submitting to Homebrew Official Taps
 

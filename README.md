@@ -24,7 +24,10 @@ Google Sans Code is an excellent programming font from Google, but there's no of
 ### Method 1: Homebrew (macOS) - Recommended
 
 ```bash
-# Install via Homebrew Cask
+# Official Homebrew cask-fonts (preferred)
+brew install font-google-sans-code-nerd
+
+# Alternative: Direct cask installation
 brew install --cask google-sans-code-nerd-font
 ```
 
@@ -149,7 +152,7 @@ To solve compatibility issues with `python3-fontforge` in Ubuntu 24.04, we adopt
 ### Terminal Configuration
 
 After installing the fonts, set the font family in your terminal to:
-- **Font Name**: `GoogleSansCodeNerdFont`
+- **Font Name**: `Google Sans Code Nerd`
 - **Alternative Name**: `GoogleSansCode Nerd Font`
 
 ### Editor Configuration
@@ -157,13 +160,13 @@ After installing the fonts, set the font family in your terminal to:
 **VS Code:**
 ```json
 {
-  "editor.fontFamily": "'GoogleSansCodeNerdFont', 'Google Sans Code', monospace"
+  "editor.fontFamily": "'Google Sans Code Nerd', 'Google Sans Code', monospace"
 }
 ```
 
 **Vim/Neovim:**
 ```vim
-set guifont=GoogleSansCodeNerdFont:h12
+set guifont=Google\ Sans\ Code\ Nerd:h12
 ```
 
 ## 🔧 Troubleshooting
