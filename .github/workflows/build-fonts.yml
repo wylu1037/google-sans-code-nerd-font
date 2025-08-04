@@ -34,40 +34,32 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y fontforge python3-fontforge python3-dev
         
-        # Set up PYTHONPATH to help find FontForge Python bindings
-        echo "PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages" >> $GITHUB_ENV
-        export PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages
-        
         # Verify FontForge installation
         echo "🔍 Verifying FontForge installation..."
         fontforge --version
         
-        # Test Python bindings with multiple methods
-        echo "🐍 Testing FontForge Python bindings..."
-        python3 -c "
+        # Test Python bindings with SYSTEM Python (not setup-python)
+        echo "🐍 Testing FontForge Python bindings with system Python..."
+        /usr/bin/python3 -c "
         try:
             import fontforge
-            print('✅ FontForge Python bindings available via direct import')
+            print('✅ FontForge Python bindings available with system Python')
+            print(f'FontForge version: {fontforge.version()}')
         except ImportError as e:
-            print(f'⚠️ Direct import failed: {e}')
+            print(f'❌ FontForge import failed with system Python: {e}')
             import sys
-            sys.path.insert(0, '/usr/lib/python3/dist-packages')
-            try:
-                import fontforge
-                print('✅ FontForge Python bindings available via sys.path')
-            except ImportError as e2:
-                print(f'❌ FontForge Python bindings failed: {e2}')
-                print(f'Python path: {sys.path}')
-                exit(1)
+            print(f'System Python path: {sys.path}')
+            exit(1)
         "
+        
+        # Show Python versions for comparison
+        echo "📊 Python environment comparison:"
+        echo "System Python: $(/usr/bin/python3 --version)"
+        echo "Setup Python: $(python3 --version)"
         
         # List FontForge related packages
         echo "📦 Installed FontForge packages:"
-        dpkg -l | grep fontforge || echo "No FontForge packages found in dpkg"
-        
-        # Check if fontforge module exists in expected locations
-        echo "🔍 Checking FontForge module locations:"
-        find /usr -name "*fontforge*" -type f 2>/dev/null | head -10 || echo "FontForge files not found"
+        dpkg -l | grep fontforge
         
     - name: Download Fira Code for ligatures
       run: |
@@ -103,24 +95,20 @@ jobs:
         mkdir -p output/ligaturized-fonts
         
     - name: Add ligatures to fonts
-      env:
-        PYTHONPATH: /usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages
       run: |
         echo "🔗 Adding ligatures to Google Sans Code fonts..."
         
-        # Debug environment
-        echo "🐍 Python environment:"
-        echo "Python version: $(python3 --version)"
-        echo "PYTHONPATH: $PYTHONPATH"
+        # Use system Python for ligaturization (where python3-fontforge is installed)
+        PYTHON_CMD="/usr/bin/python3"
+        echo "🐍 Using system Python: $($PYTHON_CMD --version)"
         
         # Test FontForge import before processing
-        echo "🧪 Testing FontForge import..."
-        python3 -c "
-        import sys
-        print(f'Python path: {sys.path}')
+        echo "🧪 Testing FontForge import with system Python..."
+        $PYTHON_CMD -c "
         try:
             import fontforge
             print('✅ FontForge import test successful')
+            print(f'FontForge version: {fontforge.version()}')
         except ImportError as e:
             print(f'❌ FontForge import test failed: {e}')
             exit(1)
@@ -147,7 +135,7 @@ jobs:
             # Create ligaturized version
             output_file="output/ligaturized-fonts/${font_name}"
             
-            if python3 scripts/ligaturize-fixed.py \
+            if $PYTHON_CMD scripts/ligaturize-fixed.py \
               "$font_file" \
               "$FIRA_CODE_FONT" \
               "$output_file"; then

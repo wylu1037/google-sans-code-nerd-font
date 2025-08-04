@@ -121,12 +121,19 @@ test_ligaturize() {
     # Test ligaturization
     output_ligaturized="test-output/$(basename "$test_font" .ttf)-ligaturized.ttf"
     
-    echo "Executing: python3 scripts/ligaturize-fixed.py \"$test_font\" tools/FiraCode-Regular.ttf \"$output_ligaturized\""
+    # Check if we can use system Python with FontForge, otherwise fall back to python3
+    if command -v /usr/bin/python3 &> /dev/null && /usr/bin/python3 -c "import fontforge" 2>/dev/null; then
+        PYTHON_CMD="/usr/bin/python3"
+        echo "Using system Python with FontForge support"
+    else
+        PYTHON_CMD="python3"
+        echo "Using default Python (may need PYTHONPATH)"
+        export PYTHONPATH="/usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages:$PYTHONPATH"
+    fi
     
-    # Set PYTHONPATH for FontForge if needed
-    export PYTHONPATH="/usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages:$PYTHONPATH"
+    echo "Executing: $PYTHON_CMD scripts/ligaturize-fixed.py \"$test_font\" tools/FiraCode-Regular.ttf \"$output_ligaturized\""
     
-    if python3 scripts/ligaturize-fixed.py "$test_font" tools/FiraCode-Regular.ttf "$output_ligaturized"; then
+    if $PYTHON_CMD scripts/ligaturize-fixed.py "$test_font" tools/FiraCode-Regular.ttf "$output_ligaturized"; then
         echo "✅ Ligaturization test successful"
         
         # Check output file
