@@ -28,9 +28,8 @@ jobs:
         
     - name: Install FontForge via Docker approach
       run: |
-        # Install Docker if not present (usually available in GitHub Actions)
-        sudo apt-get update
-        sudo apt-get install -y docker.io
+        # GitHub Actions environment already has Docker pre-installed
+        # No need to install Docker again
         
         # Pull the official Nerd Font patcher Docker image
         docker pull nerdfonts/patcher:latest
