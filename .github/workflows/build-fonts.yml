@@ -6,6 +6,8 @@ on:
     paths:
       - 'data/google-sans-code/**'
       - '.github/workflows/build-fonts.yml'
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main ]
     paths:
@@ -137,12 +139,16 @@ jobs:
         path: output/patched-fonts/
         retention-days: 90
         
-    - name: Create release (on main branch)
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    - name: Create release (on main branch or tag)
+      if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || startsWith(github.ref, 'refs/tags/')
       id: create_release
       run: |
-        # Generate version tag based on date
-        VERSION_TAG="v$(date +%Y.%m.%d)-$(date +%H%M)"
+        # Use existing tag if this is a tag push, otherwise generate date-based tag
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION_TAG=${GITHUB_REF#refs/tags/}
+        else
+          VERSION_TAG="v$(date +%Y.%m.%d)-$(date +%H%M)"
+        fi
         echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_OUTPUT
         
         # Create release notes
@@ -192,7 +198,7 @@ jobs:
         echo "**Build Environment**: GitHub Actions" >> release_notes.md
         
     - name: Create GitHub Release
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || startsWith(github.ref, 'refs/tags/')
       uses: actions/create-release@v1
       id: create_github_release
       env:
@@ -205,7 +211,7 @@ jobs:
         prerelease: false
         
     - name: Upload release assets
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || startsWith(github.ref, 'refs/tags/')
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
