@@ -131,11 +131,11 @@ jobs:
         Manual Installation:
         1. Extract all .ttf files
         2. Double-click font files to install to system
-        3. Use font family name "Google Sans Code Nerd" in applications
+        3. Use font family name "Google Sans Code NF" in applications
         
         VS Code Configuration:
         {
-          "editor.fontFamily": "'Google Sans Code Nerd'"
+          "editor.fontFamily": "'Google Sans Code NF'"
         }
         
         More info: https://github.com/$GITHUB_REPOSITORY

@@ -34,10 +34,10 @@ cask "font-google-sans-code-nerd" do
       
       VS Code settings.json:
       {
-        "editor.fontFamily": "'Google Sans Code Nerd'"
+        "editor.fontFamily": "'Google Sans Code NF'"
       }
       
-      Terminal: Select "Google Sans Code Nerd" as your font family
+      Terminal: Select "Google Sans Code NF" as your font family
       
       The font includes 3600+ programming and UI icons from:
       - Font Awesome, Material Design Icons, Octicons

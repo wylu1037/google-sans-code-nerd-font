@@ -35,13 +35,13 @@ After installation, you can use the font in:
 
 ### Terminal Applications
 Set your terminal font to:
-- **Font Name**: `Google Sans Code Nerd`
-- **Family Name**: `Google Sans Code Nerd`
+- **Font Name**: `Google Sans Code NF`
+- **Family Name**: `Google Sans Code NF`
 
 ### Text Editors & IDEs
-- VS Code: `"editor.fontFamily": "'Google Sans Code Nerd'"`
-- Sublime Text: `"font_face": "Google Sans Code Nerd"`
-- Vim/Neovim: `set guifont=Google\ Sans\ Code\ Nerd:h12`
+- VS Code: `"editor.fontFamily": "'Google Sans Code NF'"`
+- Sublime Text: `"font_face": "Google Sans Code NF"`
+- Vim/Neovim: `set guifont=Google\ Sans\ Code\ NF:h12`
 
 ## Submitting to Homebrew Official Taps
 

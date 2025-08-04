@@ -152,7 +152,7 @@ To solve compatibility issues with `python3-fontforge` in Ubuntu 24.04, we adopt
 ### Terminal Configuration
 
 After installing the fonts, set the font family in your terminal to:
-- **Font Name**: `Google Sans Code Nerd`
+- **Font Name**: `Google Sans Code NF`
 - **Alternative Name**: `GoogleSansCode Nerd Font`
 
 ### Editor Configuration
@@ -160,13 +160,13 @@ After installing the fonts, set the font family in your terminal to:
 **VS Code:**
 ```json
 {
-  "editor.fontFamily": "'Google Sans Code Nerd', 'Google Sans Code', monospace"
+  "editor.fontFamily": "'Google Sans Code NF', 'Google Sans Code', monospace"
 }
 ```
 
 **Vim/Neovim:**
 ```vim
-set guifont=Google\ Sans\ Code\ Nerd:h12
+set guifont=Google\ Sans\ Code\ NF:h12
 ```
 
 ## 🔧 Troubleshooting

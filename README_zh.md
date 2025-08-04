@@ -152,7 +152,7 @@ done
 ### 终端配置
 
 安装字体后，在终端中设置字体族为：
-- **字体名称**: `Google Sans Code Nerd`
+- **字体名称**: `Google Sans Code NF`
 - **备选名称**: `GoogleSansCode Nerd Font`
 
 ### 编辑器配置
@@ -160,13 +160,13 @@ done
 **VS Code:**
 ```json
 {
-  "editor.fontFamily": "'Google Sans Code Nerd', 'Google Sans Code', monospace"
+  "editor.fontFamily": "'Google Sans Code NF', 'Google Sans Code', monospace"
 }
 ```
 
 **Vim/Neovim:**
 ```vim
-set guifont=Google\ Sans\ Code\ Nerd:h12
+set guifont=Google\ Sans\ Code\ NF:h12
 ```
 
 ## 🔧 故障排除
