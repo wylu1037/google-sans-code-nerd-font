@@ -135,14 +135,18 @@ jobs:
             # Create ligaturized version
             output_file="output/ligaturized-fonts/${font_name}"
             
-            if $PYTHON_CMD scripts/ligaturize-fixed.py \
+            if fontforge -lang=py -script scripts/ligaturize.py \
               "$font_file" \
-              "$FIRA_CODE_FONT" \
-              "$output_file"; then
+              --ligature-font-file="$FIRA_CODE_FONT" \
+              --output-dir="$(dirname "$output_file")" \
+              --output-name="Google Sans Code"; then
               
-              if [ -f "$output_file" ]; then
-                file_size=$(stat -c%s "$output_file")
-                echo "✅ Successfully ligaturized: $font_name (${file_size} bytes)"
+              # Find the generated ligaturized font file
+              ligaturized_file=$(find "$(dirname "$output_file")" -name "GoogleSansCode*.ttf" -newer "$font_file" | head -1)
+              
+              if [ -f "$ligaturized_file" ]; then
+                file_size=$(stat -c%s "$ligaturized_file")
+                echo "✅ Successfully ligaturized: $font_name -> $(basename "$ligaturized_file") (${file_size} bytes)"
                 processed_count=$((processed_count + 1))
               else
                 echo "❌ Output file not created: $font_name"
@@ -299,9 +303,9 @@ jobs:
         echo "Release package created:"
         ls -la *.zip
         
-    - name: Upload google-sans-code-nerd-font-ligatures
+    - name: Upload google-sans-code-nerd-font
       uses: actions/upload-artifact@v4
       with:
-        name: google-sans-code-nerd-font-ligatures
+        name: google-sans-code-nerd-font
         path: output/patched-fonts/
         retention-days: 90
