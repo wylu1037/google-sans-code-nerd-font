@@ -130,16 +130,9 @@ jobs:
         echo "Release package created:"
         ls -la *.zip
         
-    - name: Upload patched fonts
+    - name: Upload google-sans-code-nerd-font
       uses: actions/upload-artifact@v4
       with:
-        name: GoogleSansCodeNerdFont-${{ github.run_number }}
-        path: output/patched-fonts/
+        name: google-sans-code-nerd-font
+        path: output/
         retention-days: 90
-        
-    - name: Upload release archive
-      uses: actions/upload-artifact@v4
-      with:
-        name: GoogleSansCodeNerdFont-Release-${{ github.run_number }}
-        path: output/*.zip
-        retention-days: 180
