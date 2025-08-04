@@ -141,8 +141,9 @@ jobs:
             
             if $PYTHON_CMD scripts/ligaturize.py \
               "$font_file" \
-              "$FIRA_CODE_FONT" \
-              "$output_file"; then
+              --ligature-font-file="$FIRA_CODE_FONT" \
+              --output-dir="$(dirname "$output_file")" \
+              --output-name="$(basename "$font_file" .ttf)"; then
               
               if [ -f "$output_file" ]; then
                 file_size=$(stat -c%s "$output_file")

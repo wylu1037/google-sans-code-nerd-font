@@ -131,9 +131,9 @@ test_ligaturize() {
         export PYTHONPATH="/usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages:$PYTHONPATH"
     fi
     
-    echo "Executing: $PYTHON_CMD scripts/ligaturize-fixed.py \"$test_font\" tools/FiraCode-Regular.ttf \"$output_ligaturized\""
+    echo "Executing: $PYTHON_CMD scripts/ligaturize.py \"$test_font\" --ligature-font-file=tools/FiraCode-Regular.ttf --output-dir=test-output --output-name=\"$(basename "$test_font" .ttf)-ligaturized\""
     
-    if $PYTHON_CMD scripts/ligaturize-fixed.py "$test_font" tools/FiraCode-Regular.ttf "$output_ligaturized"; then
+    if $PYTHON_CMD scripts/ligaturize.py "$test_font" --ligature-font-file=tools/FiraCode-Regular.ttf --output-dir=test-output --output-name="$(basename "$test_font" .ttf)-ligaturized"; then
         echo "✅ Ligaturization test successful"
         
         # Check output file
