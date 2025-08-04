@@ -63,13 +63,35 @@ jobs:
         # Using --complete flag to include all icon sets as recommended by Nerd Fonts
         # Source: https://github.com/ryanoasis/nerd-fonts
         # This adds 3600+ icons from Font Awesome, Material Design, Octicons, etc.
-        # Process all fonts using Docker (it handles multiple files automatically)
-        docker run --rm \
-          -v "$INPUT_DIR":/in \
-          -v "$OUTPUT_DIR":/out \
-          nerdfonts/patcher:latest \
-          --complete \
-          --quiet
+        # Process each font file individually to preserve style names (Bold, Light, etc.)
+        for font_file in "$INPUT_DIR"/*.ttf; do
+          if [ -f "$font_file" ]; then
+            font_name=$(basename "$font_file")
+            echo "Processing: $font_name"
+            
+            # Extract style from filename (Bold, Light, Italic, etc.)
+            style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
+            echo "Detected style: $style"
+            
+            # Create temporary directory for single font processing
+            temp_input_dir=$(mktemp -d)
+            cp "$font_file" "$temp_input_dir/"
+            
+            # Process with custom family name but preserve style
+            docker run --rm \
+              -v "$temp_input_dir":/in \
+              -v "$OUTPUT_DIR":/out \
+              nerdfonts/patcher:latest \
+              --complete \
+              --quiet \
+              --name "Google\ Sans\ Code\ NF\ $style"
+            
+            # Clean up temporary directory
+            rm -rf "$temp_input_dir"
+            
+            echo "Completed processing: $font_name -> Google Sans Code NF $style"
+          fi
+        done
 
         # Show processing results
         echo "Processed font files:"
