@@ -1,184 +1,28 @@
-# Compiled and built fonts
-patched-fonts/
-*.otf
-*.ttf
-!Google Sans Code/**/*.ttf
-!Google Sans Code/**/*.otf
+# Build artifacts
+output/
+tools/
+test-output/
+*.zip
 
-# Temporary files
-temp/
-tmp/
-*.tmp
-*.temp
+# Font Patcher downloads
+FontPatcher.zip
 
-# Downloaded dependencies
-src/font-patcher
-src/glyphs/
-src/config.json
+# macOS
+.DS_Store
 
-# Build logs
-*.log
-build.log
-font-build.log
+# IDE
+.vscode/
+.idea/
 
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-
-# Windows
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# Font development files
-*.glyphs
-*.ufo
-*.designspace
-*.fea
-*.plist
-
-# FontForge files
-*.sfd
-*.backup
-
-# Archives (except source fonts)
-*.zip
-*.tar.gz
-*.tar.bz2
-*.rar
-*.7z
-!Google Sans Code.zip
-
-# Node modules (if using any JS tools)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+dist/
+build/
 
 # Logs
-logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# Backup files
-*.bak
-*.backup
-*.old
-
-# Test output
-test-output/
-test-fonts/
-
-# Cache directories
-.cache/
-.npm
-.eslintcache
-
-# Documentation builds
-_site/
-.sass-cache/
-.jekyll-cache/
-.jekyll-metadata
-
-# Local configuration
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Package manager locks (commit these if using specific versions)
-# package-lock.json
-# yarn.lock
-
-# GitHub Desktop
-.github-desktop
-
-# JetBrains
-.idea/
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
-*.swp
-*.swo
-.netrwhist
-
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-auto-save-list
-tramp
-.\#*
-
-# PowerShell
-*.ps1xml
-
-# Local test scripts
-test-*.sh
-test-*.ps1
-debug-*.sh
-debug-*.ps1
