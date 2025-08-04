@@ -90,10 +90,26 @@ done
 本项目使用 GitHub Actions 自动构建字体：
 
 - **触发条件**: 推送到 main 分支或手动触发
-- **构建环境**: Ubuntu Latest  
+- **构建环境**: Ubuntu Latest + Docker  
 - **处理字体**: 所有静态字体文件 (12个字重)
 - **输出格式**: TTF 格式，包含完整 Nerd Font 图标集
 - **Artifacts**: 90天保留期，包含所有构建字体和发布包
+
+### 🐳 Docker 化解决方案
+
+为了解决 Ubuntu 24.04 中 `python3-fontforge` 的兼容性问题，我们采用了 Docker 容器化方案：
+
+- 使用官方 `nerdfonts/patcher:latest` Docker 镜像
+- 避免了 FontForge Python 绑定的版本冲突
+- 确保构建环境的一致性和可靠性
+- 支持完整的 `--complete` 参数，包含所有图标集
+
+### 构建流程
+
+1. **环境准备**: 安装 Docker 并拉取 Nerd Font Patcher 镜像
+2. **字体处理**: 使用容器化 Font Patcher 批量处理字体
+3. **验证检查**: 确保生成的字体文件完整性
+4. **打包上传**: 创建发布包并上传 Artifacts
 
 ## 💡 字体特性
 

@@ -26,44 +26,50 @@ jobs:
       with:
         python-version: '3.11'
         
-    - name: Install FontForge and dependencies
+    - name: Install FontForge via Docker approach
       run: |
+        # Install Docker if not present (usually available in GitHub Actions)
         sudo apt-get update
-        sudo apt-get install -y fontforge python3-fontforge
-        python -c "import fontforge; print('FontForge version:', fontforge.version())"
+        sudo apt-get install -y docker.io
         
-    - name: Download Nerd Font Patcher
-      run: |
-        mkdir -p tools
-        cd tools
-        curl -L https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FontPatcher.zip -o FontPatcher.zip
-        unzip FontPatcher.zip
-        chmod +x font-patcher
-        ls -la
+        # Pull the official Nerd Font patcher Docker image
+        docker pull nerdfonts/patcher:latest
+        
+        # Verify Docker setup
+        docker --version
+        docker images | grep nerdfonts
         
     - name: Create output directory
       run: |
         mkdir -p output/patched-fonts
         
-    - name: Patch fonts
+    - name: Patch fonts using Docker
       run: |
-        cd tools
-        echo "Starting font processing..."
+        echo "Starting font processing with Docker..."
         
-        # Process all static font files
-        for font_file in ../data/google-sans-code/static/*.ttf; do
-          if [ -f "$font_file" ]; then
-            echo "Processing: $(basename "$font_file")"
-            fontforge -script font-patcher "$font_file" \
-              --complete \
-              --outputdir ../output/patched-fonts \
-              --quiet
-          fi
-        done
+        # Set up absolute paths for Docker volumes
+        INPUT_DIR=$(realpath data/google-sans-code/static)
+        OUTPUT_DIR=$(realpath output/patched-fonts)
+        
+        echo "Input directory: $INPUT_DIR"
+        echo "Output directory: $OUTPUT_DIR"
+        
+        # List input fonts
+        echo "Input fonts to process:"
+        ls -la "$INPUT_DIR"/*.ttf
+        
+        # Process fonts using Docker
+        # Note: Docker will handle FontForge installation and dependencies automatically
+        docker run --rm \
+          -v "$INPUT_DIR":/in:Z \
+          -v "$OUTPUT_DIR":/out:Z \
+          nerdfonts/patcher:latest \
+          --complete \
+          --quiet
         
         # Show processing results
         echo "Processed font files:"
-        ls -la ../output/patched-fonts/
+        ls -la "$OUTPUT_DIR"/
         
     - name: Verify patched fonts
       run: |
@@ -75,6 +81,8 @@ jobs:
         
         if [ $font_count -eq 0 ]; then
           echo "Error: No font files generated"
+          echo "Checking for any output files:"
+          ls -la .
           exit 1
         fi
         

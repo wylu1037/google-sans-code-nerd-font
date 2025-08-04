@@ -1,133 +1,134 @@
 #!/bin/bash
 
-# Google Sans Code Nerd Font 构建测试脚本
-# 用于在本地验证字体处理流程
+# Google Sans Code Nerd Font Build Test Script
+# Used to verify the font processing workflow locally
 
-set -e  # 遇到错误时退出
+set -e  # Exit on error
 
-echo "🚀 开始测试 Google Sans Code Nerd Font 构建流程..."
+echo "🚀 Starting the Google Sans Code Nerd Font build process test..."
 
-# 检查必要的工具
+# Check for necessary tools
 check_dependencies() {
-    echo "📋 检查依赖工具..."
+    echo "📋 Checking dependencies..."
     
     if ! command -v fontforge &> /dev/null; then
-        echo "❌ FontForge 未安装。请先安装 FontForge:"
+        echo "❌ FontForge is not installed. Please install it first:"
         echo "   Ubuntu/Debian: sudo apt-get install fontforge python3-fontforge"
         echo "   macOS: brew install fontforge"
         exit 1
     fi
     
     if ! command -v python3 &> /dev/null; then
-        echo "❌ Python3 未安装"
+        echo "❌ Python3 is not installed"
         exit 1
     fi
     
     if ! command -v curl &> /dev/null; then
-        echo "❌ curl 未安装"
+        echo "❌ curl is not installed"
         exit 1
     fi
     
     if ! command -v unzip &> /dev/null; then
-        echo "❌ unzip 未安装"
+        echo "❌ unzip is not installed"
         exit 1
     fi
     
-    echo "✅ 依赖检查通过"
+    echo "✅ Dependency check passed"
 }
 
-# 检查字体文件
+# Check font files
 check_fonts() {
-    echo "📁 检查字体文件..."
+    echo "📁 Checking font files..."
     
     if [ ! -d "data/google-sans-code/static" ]; then
-        echo "❌ 字体文件目录不存在: data/google-sans-code/static"
+        echo "❌ Font file directory does not exist: data/google-sans-code/static"
         exit 1
     fi
     
     font_count=$(find data/google-sans-code/static -name "*.ttf" | wc -l)
-    echo "✅ 找到 $font_count 个字体文件"
+    echo "✅ Found $font_count font files"
     
     if [ $font_count -eq 0 ]; then
-        echo "❌ 没有找到任何字体文件"
+        echo "❌ No font files found"
         exit 1
     fi
 }
 
-# 下载 Font Patcher
+# Download Font Patcher
 setup_patcher() {
-    echo "⬇️ 设置 Nerd Font Patcher..."
+    echo "⬇️ Setting up Nerd Font Patcher..."
     
     mkdir -p tools
     cd tools
     
     if [ ! -f "font-patcher" ]; then
-        echo "正在下载 FontPatcher.zip..."
-        curl -L https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FontPatcher.zip -o FontPatcher.zip
+        echo "Downloading FontPatcher.zip..."
+        # Pinning version for reproducible builds
+        curl -L https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/FontPatcher.zip -o FontPatcher.zip
         unzip -q FontPatcher.zip
         chmod +x font-patcher
     fi
     
     if [ ! -f "font-patcher" ]; then
-        echo "❌ font-patcher 脚本不存在"
+        echo "❌ font-patcher script not found"
         exit 1
     fi
     
-    echo "✅ Font Patcher 设置完成"
+    echo "✅ Font Patcher setup complete"
     cd ..
 }
 
-# 测试处理单个字体
+# Test processing of a single font file
 test_single_font() {
-    echo "🧪 测试处理单个字体文件..."
+    echo "🧪 Testing processing of a single font file..."
     
-    # 找到第一个字体文件进行测试
+    # Find the first font file to test
     test_font=$(find data/google-sans-code/static -name "*.ttf" | head -1)
     
     if [ -z "$test_font" ]; then
-        echo "❌ 没有找到测试字体文件"
+        echo "❌ No test font file found"
         exit 1
     fi
     
-    echo "测试字体: $(basename "$test_font")"
+    echo "Testing font: $(basename "$test_font")"
     
     mkdir -p test-output
     
     cd tools
-    echo "执行: fontforge -script font-patcher \"$test_font\" --fontawesome --outputdir ../test-output"
+    echo "Executing: fontforge -script font-patcher \"$test_font\" --fontawesome --outputdir ../test-output"
     
-    # 只使用 --fontawesome 进行快速测试，避免 --complete 耗时过长
+    # Use only --fontawesome for a quick test to avoid long processing time with --complete
     if fontforge -script font-patcher "../$test_font" --fontawesome --outputdir ../test-output --quiet; then
-        echo "✅ 字体处理测试成功"
+        echo "✅ Font processing test successful"
     else
-        echo "❌ 字体处理测试失败"
+        echo "❌ Font processing test failed"
         exit 1
     fi
     
     cd ..
     
-    # 检查输出文件
+    # Check output files
     output_count=$(find test-output -name "*.ttf" | wc -l)
     if [ $output_count -gt 0 ]; then
-        echo "✅ 生成了 $output_count 个输出字体文件"
+        echo "✅ Generated $output_count output font files"
         ls -la test-output/
     else
-        echo "❌ 没有生成输出文件"
+        echo "❌ No output files generated"
         exit 1
     fi
 }
 
-# 清理测试文件
+# Clean up test files
 cleanup() {
-    echo "🧹 清理测试文件..."
+    echo "🧹 Cleaning up test files..."
     rm -rf tools/FontPatcher.zip
     rm -rf test-output
-    echo "✅ 清理完成"
+    echo "✅ Cleanup complete"
 }
 
-# 主函数
+# Main function
 main() {
-    echo "📍 当前目录: $(pwd)"
+    echo "📍 Current directory: $(pwd)"
     
     check_dependencies
     check_fonts
@@ -135,20 +136,26 @@ main() {
     test_single_font
     
     echo ""
-    echo "🎉 测试完成！GitHub Actions 工作流应该可以正常运行。"
+    echo "🎉 Test complete! The GitHub Actions workflow should run correctly."
     echo ""
-    echo "下一步:"
-    echo "1. 提交并推送更改到 GitHub"
-    echo "2. 查看 Actions 标签页查看构建状态"
-    echo "3. 构建完成后下载 Artifacts 中的字体文件"
+    echo "Next steps:"
+    echo "1. Commit and push your changes to GitHub"
+    echo "2. Check the Actions tab to see the build status"
+    echo "3. Download the font files from the Artifacts after the build is complete"
     echo ""
     
-    read -p "是否清理测试文件？(y/N) " -n 1 -r
-    echo ""
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # In CI environments, always clean up. Otherwise, ask the user.
+    if [ -n "$CI" ]; then
+        echo "CI environment detected. Cleaning up automatically."
         cleanup
+    else
+        read -p "Clean up test files? (y/N) " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            cleanup
+        fi
     fi
 }
 
-# 运行主函数
+# Run main function
 main "$@"
