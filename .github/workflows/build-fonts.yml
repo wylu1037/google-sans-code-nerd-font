@@ -46,11 +46,21 @@ jobs:
         FONTFORGE_PATH="/usr/lib/python3/dist-packages"
         SITE_PACKAGES="/usr/local/lib/python${PYTHON_VERSION}/site-packages"
         
-        if [ -f "$FONTFORGE_PATH/fontforge.so" ] && [ ! -f "$SITE_PACKAGES/fontforge.so" ]; then
+        # Find the actual FontForge module file (handles different naming conventions)
+        FONTFORGE_MODULE=$(find "$FONTFORGE_PATH" -name "fontforge*.so" | head -1)
+        PSMAT_MODULE=$(find "$FONTFORGE_PATH" -name "psMat*.so" | head -1)
+        
+        if [ -n "$FONTFORGE_MODULE" ] && [ ! -f "$SITE_PACKAGES/fontforge.so" ]; then
           echo "Creating symbolic link for fontforge module..."
+          echo "Source: $FONTFORGE_MODULE"
           sudo mkdir -p "$SITE_PACKAGES"
-          sudo ln -sf "$FONTFORGE_PATH/fontforge.so" "$SITE_PACKAGES/fontforge.so"
-          sudo ln -sf "$FONTFORGE_PATH/psMat.so" "$SITE_PACKAGES/psMat.so" 2>/dev/null || true
+          sudo ln -sf "$FONTFORGE_MODULE" "$SITE_PACKAGES/fontforge.so"
+          
+          if [ -n "$PSMAT_MODULE" ]; then
+            echo "Creating symbolic link for psMat module..."
+            echo "Source: $PSMAT_MODULE"
+            sudo ln -sf "$PSMAT_MODULE" "$SITE_PACKAGES/psMat.so"
+          fi
         fi
         
         # Method 3: Alternative installation via pip if available
@@ -66,16 +76,29 @@ jobs:
         
         # Test Python import with detailed error information
         echo "🐍 Testing FontForge Python import..."
+        
+        # Ensure PYTHONPATH is available for import test
+        export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
+        
         if python3 -c "import fontforge; print('✅ FontForge Python module imported successfully')"; then
           echo "FontForge Python bindings working correctly"
         else
-          echo "❌ FontForge Python import failed - this is required for ligature processing"
-          echo "Python path: $PYTHONPATH"
-          echo "Available Python packages:"
-          find /usr/lib/python3* -name "*fontforge*" 2>/dev/null || true
-          find /usr/local/lib/python* -name "*fontforge*" 2>/dev/null || true
-          exit 1
+          echo "⚠️ Initial FontForge import failed, trying sys.path method..."
+          if python3 -c "import sys; sys.path.insert(0, '/usr/lib/python3/dist-packages'); import fontforge; print('✅ FontForge imported with sys.path')"; then
+            echo "✅ FontForge working with sys.path method"
+          else
+            echo "❌ FontForge Python import failed - this is required for ligature processing"
+            echo "Python path: $PYTHONPATH"
+            echo "Available Python packages:"
+            find /usr/lib/python3* -name "*fontforge*" 2>/dev/null || true
+            find /usr/local/lib/python* -name "*fontforge*" 2>/dev/null || true
+            exit 1
+          fi
         fi
+        
+        # Set environment variable for subsequent steps
+        echo "PYTHONPATH=/usr/lib/python3/dist-packages:$PYTHONPATH" >> $GITHUB_ENV
+        echo "✅ PYTHONPATH configured for subsequent steps"
         
         # GitHub Actions environment already has Docker pre-installed
         echo "🐳 Setting up Docker environment..."

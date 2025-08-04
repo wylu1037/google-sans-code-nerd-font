@@ -12,9 +12,17 @@ def ligaturize_font(input_font_path, ligature_font_path, output_path):
     try:
         import fontforge
     except ImportError:
-        print("❌ Error: FontForge Python module not available")
-        print("   Make sure python3-fontforge is installed")
-        raise ImportError("FontForge Python module is required for ligaturization")
+        # Try alternative import methods
+        import sys
+        sys.path.insert(0, '/usr/lib/python3/dist-packages')
+        try:
+            import fontforge
+            print("✅ FontForge imported with sys.path method")
+        except ImportError:
+            print("❌ Error: FontForge Python module not available")
+            print("   Make sure python3-fontforge is installed")
+            print("   Also ensure PYTHONPATH includes /usr/lib/python3/dist-packages")
+            raise ImportError("FontForge Python module is required for ligaturization")
     
     print(f"📂 Loading input font: {input_font_path}")
     input_font = fontforge.open(input_font_path)
