@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Simplified but robust ligaturizer for Google Sans Code
-Avoids complex contextual rules that can cause FontForge to crash
+Fixed version that handles FontForge API correctly
 """
 
 import argparse
@@ -30,88 +30,140 @@ def ligaturize_font(input_font_file, ligature_font_file, output_dir=None, output
         
         print("🔗 Copying ligature features using simplified approach...")
         
-        # Define the most important ligatures to copy
-        # These are the core programming ligatures that work reliably
-        important_ligatures = [
-            # Arrow operators
-            ('hyphen_greater.liga', ['hyphen', 'greater']),  # ->
-            ('equal_greater.liga', ['equal', 'greater']),    # =>
-            ('less_hyphen.liga', ['less', 'hyphen']),        # <-
-            ('less_equal.liga', ['less', 'equal']),          # <=
-            ('greater_equal.liga', ['greater', 'equal']),    # >=
-            
-            # Comparison operators
-            ('equal_equal.liga', ['equal', 'equal']),        # ==
-            ('exclam_equal.liga', ['exclam', 'equal']),      # !=
-            ('equal_equal_equal.liga', ['equal', 'equal', 'equal']),  # ===
-            ('exclam_equal_equal.liga', ['exclam', 'equal', 'equal']), # !==
-            
-            # Double operators
-            ('hyphen_hyphen.liga', ['hyphen', 'hyphen']),    # --
-            ('plus_plus.liga', ['plus', 'plus']),            # ++
-            ('bar_bar.liga', ['bar', 'bar']),                # ||
-            ('ampersand_ampersand.liga', ['ampersand', 'ampersand']), # &&
+        # First, let's discover what ligatures actually exist in Fira Code
+        print("🔍 Discovering available ligatures in Fira Code...")
+        available_ligatures = []
+        for glyph_name in ligature_font:
+            glyph = ligature_font[glyph_name]
+            # Look for ligature-like glyphs (typically have no unicode mapping and compound names)
+            if (glyph.unicode < 0 and 
+                ('_' in glyph_name or 
+                 'liga' in glyph_name or
+                 any(x in glyph_name.lower() for x in ['hyphen', 'greater', 'equal', 'less', 'exclam', 'plus', 'bar', 'ampersand']))):
+                available_ligatures.append(glyph_name)
+        
+        print(f"📋 Found {len(available_ligatures)} potential ligatures:")
+        for liga in sorted(available_ligatures)[:20]:  # Show first 20
+            print(f"   - {liga}")
+        if len(available_ligatures) > 20:
+            print(f"   ... and {len(available_ligatures) - 20} more")
+        
+        # Define ligatures we want to support with their character sequences
+        target_ligatures = [
+            # Try to find arrow ligatures
+            (['hyphen', 'greater'], ['-', '>']),      # ->
+            (['equal', 'greater'], ['=', '>']),       # =>  
+            (['less', 'hyphen'], ['<', '-']),         # <-
+            (['less', 'equal'], ['<', '=']),          # <=
+            (['greater', 'equal'], ['>', '=']),       # >=
+            (['equal', 'equal'], ['=', '=']),         # ==
+            (['exclam', 'equal'], ['!', '=']),        # !=
+            (['hyphen', 'hyphen'], ['-', '-']),       # --
+            (['plus', 'plus'], ['+', '+']),           # ++
+            (['bar', 'bar'], ['|', '|']),             # ||
+            (['ampersand', 'ampersand'], ['&', '&']), # &&
         ]
         
         copied_count = 0
         
-        # Use a simpler approach: direct glyph substitution with basic GSUB features
-        for liga_name, char_sequence in important_ligatures:
+        # Create a single lookup for all ligatures to avoid conflicts
+        main_lookup_name = "programming_ligatures"
+        main_subtable_name = "programming_ligatures_subtable"
+        
+        try:
+            # Add the main lookup table
+            input_font.addLookup(main_lookup_name, 'gsub_ligature', (), 
+                (('liga', (('DFLT', ('dflt',)), ('latn', ('dflt',)))),))
+            input_font.addLookupSubtable(main_lookup_name, main_subtable_name)
+            print(f"✅ Created main ligature lookup: {main_lookup_name}")
+        except Exception as e:
+            print(f"❌ Failed to create main lookup: {e}")
+            return False
+        
+        # Try to find and copy ligatures
+        for char_names, char_symbols in target_ligatures:
+            liga_symbol = ''.join(char_symbols)
+            
+            # Try different possible ligature names
+            possible_names = [
+                '_'.join(char_names) + '.liga',
+                '_'.join(char_names),
+                liga_symbol,
+            ]
+            
+            # Also try variations with common Fira Code naming
+            for name in char_names:
+                possible_names.extend([
+                    f"{name}_{char_names[1] if len(char_names) > 1 else ''}.liga",
+                    f"{name}{char_names[1] if len(char_names) > 1 else ''}",
+                ])
+            
+            ligature_found = False
+            source_liga_name = None
+            
+            # Search for the ligature in available ligatures
+            for possible_name in possible_names:
+                if possible_name in available_ligatures:
+                    source_liga_name = possible_name
+                    ligature_found = True
+                    break
+            
+            # Also try fuzzy matching
+            if not ligature_found:
+                for available_liga in available_ligatures:
+                    # Check if this ligature could match our target
+                    if (all(char in available_liga.lower() for char in char_names) or
+                        liga_symbol.replace('-', 'hyphen').replace('>', 'greater').replace('=', 'equal').replace('<', 'less').replace('!', 'exclam').replace('+', 'plus').replace('|', 'bar').replace('&', 'ampersand') in available_liga.lower()):
+                        source_liga_name = available_liga
+                        ligature_found = True
+                        break
+            
+            if not ligature_found:
+                print(f"  ⚠️  Ligature for {liga_symbol} not found, skipping")
+                continue
+            
             try:
-                # Check if ligature exists in source font
-                if liga_name not in ligature_font:
-                    print(f"  ⚠️  Ligature {liga_name} not found in source font, skipping")
-                    continue
-                
                 # Copy the ligature glyph
                 ligature_font.selection.none()
-                ligature_font.selection.select(liga_name)
+                ligature_font.selection.select(source_liga_name)
                 ligature_font.copy()
                 
                 # Create the ligature in target font
-                lig_glyph_name = f"liga_{copied_count}"
-                input_font.createChar(-1, lig_glyph_name)
+                target_liga_name = f"liga_{liga_symbol.replace('-', 'hyphen').replace('>', 'gt').replace('=', 'eq').replace('<', 'lt').replace('!', 'excl').replace('+', 'plus').replace('|', 'bar').replace('&', 'amp')}"
+                input_font.createChar(-1, target_liga_name)
                 input_font.selection.none()
-                input_font.selection.select(lig_glyph_name)
+                input_font.selection.select(target_liga_name)
                 input_font.paste()
                 
-                # Create a simple substitution lookup
-                lookup_name = f"liga_lookup_{copied_count}"
-                subtable_name = f"liga_subtable_{copied_count}"
-                
-                # Add lookup table
-                input_font.addLookup(lookup_name, 'gsub_ligature', (), 
-                    (('liga', (('DFLT', ('dflt',)), ('latn', ('dflt',)))),))
-                input_font.addLookupSubtable(lookup_name, subtable_name)
-                
-                # Map character sequence to ligature
-                char_names = []
-                for char in char_sequence:
-                    # Convert character names to actual character references
-                    char_map = {
-                        'hyphen': '-', 'greater': '>', 'equal': '=', 'less': '<',
-                        'exclam': '!', 'plus': '+', 'bar': '|', 'ampersand': '&'
-                    }
-                    if char in char_map:
-                        actual_char = char_map[char]
-                        # Find the glyph name in the font
-                        glyph_name = None
-                        for glyph in input_font:
-                            if input_font[glyph].unicode == ord(actual_char):
-                                glyph_name = glyph
+                # Find the actual glyph names for the characters in the font
+                char_glyph_names = []
+                for char_symbol in char_symbols:
+                    char_found = False
+                    for glyph_name in input_font:
+                        try:
+                            if input_font[glyph_name].unicode == ord(char_symbol):
+                                char_glyph_names.append(glyph_name)
+                                char_found = True
                                 break
-                        if glyph_name:
-                            char_names.append(glyph_name)
+                        except:
+                            continue
+                    
+                    if not char_found:
+                        print(f"    ⚠️  Character '{char_symbol}' not found in font")
+                        break
                 
-                if len(char_names) == len(char_sequence):
+                if len(char_glyph_names) == len(char_symbols):
                     # Create the ligature substitution
-                    ligature_tuple = tuple(char_names)
-                    input_font[char_names[0]].addPosSub(subtable_name, ligature_tuple, lig_glyph_name)
+                    # Format: first_glyph.addPosSub(subtable_name, tuple_of_all_glyphs, target_ligature)
+                    source_glyphs = tuple(char_glyph_names)
+                    input_font[char_glyph_names[0]].addPosSub(main_subtable_name, source_glyphs, target_liga_name)
                     copied_count += 1
-                    print(f"  ✅ Added ligature: {''.join([char_map.get(c, c) for c in char_sequence])}")
+                    print(f"  ✅ Added ligature: {liga_symbol} ({source_liga_name} -> {target_liga_name})")
+                else:
+                    print(f"  ⚠️  Could not map all characters for {liga_symbol}")
                 
             except Exception as e:
-                print(f"  ⚠️  Failed to add ligature {liga_name}: {e}")
+                print(f"  ⚠️  Failed to add ligature for {liga_symbol}: {e}")
                 continue
         
         print(f"📊 Successfully copied {copied_count} ligatures")
