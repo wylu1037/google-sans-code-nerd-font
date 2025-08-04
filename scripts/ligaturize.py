@@ -30,50 +30,63 @@ def ligaturize_font(input_font_path, ligature_font_path, output_path):
         
         print("🔗 Copying ligature features using simplified approach...")
         
-        # Use the safer mergeFeature approach instead of complex OpenType rules
+        # Use the safest approach: direct font merging
         try:
-            # Copy GSUB table features that contain ligatures
-            for lookup_name in ligature_font.gsub_lookups:
-                try:
-                    # Skip if lookup already exists in target font
-                    if lookup_name in input_font.gsub_lookups:
-                        continue
-                        
-                    lookup_info = ligature_font.getLookupInfo(lookup_name)
-                    if lookup_info and 'liga' in str(lookup_info).lower():
-                        print(f"  📋 Copying lookup: {lookup_name}")
-                        input_font.importLookups(ligature_font, (lookup_name,))
-                except Exception as e:
-                    print(f"  ⚠️  Skipped lookup {lookup_name}: {e}")
-                    continue
+            print("  🔄 Using FontForge's mergeFonts method...")
             
-            print("✅ Successfully copied ligature lookups")
+            # Create a backup of the original font name for later restoration
+            original_fontname = input_font.fontname
+            original_familyname = input_font.familyname
+            original_fullname = input_font.fullname
+            
+            # Merge the ligature font into the input font
+            # This copies both glyphs and OpenType features safely
+            input_font.mergeFonts(ligature_font_path)
+            
+            # Restore original font metadata to prevent name conflicts
+            input_font.fontname = original_fontname
+            input_font.familyname = original_familyname
+            input_font.fullname = original_fullname
+            
+            print("✅ Successfully merged ligature font")
             
         except Exception as e:
-            print(f"⚠️  Lookup copying failed, trying alternative method: {e}")
+            print(f"⚠️  Direct merge failed, trying manual glyph copying: {e}")
             
-            # Fallback: try to merge specific ligature glyphs manually
-            ligature_glyphs = []
-            for glyph_name in ligature_font:
-                glyph = ligature_font[glyph_name]
-                # Look for ligature glyphs (usually have specific naming patterns)
-                if (glyph.unicode < 0 and 
-                    ('liga' in glyph_name or '_' in glyph_name or 
-                     any(x in glyph_name.lower() for x in ['equal', 'greater', 'less', 'arrow', 'hyphen']))):
-                    ligature_glyphs.append(glyph_name)
+            # Fallback: manually copy ligature glyphs only (safer approach)
+            ligature_count = 0
             
-            print(f"  📊 Found {len(ligature_glyphs)} potential ligature glyphs")
-            
-            if ligature_glyphs:
-                # Use FontForge's mergeFeature if available
-                try:
-                    input_font.mergeFeature(ligature_font_path)
-                    print("✅ Successfully merged ligature features")
-                except Exception as e:
-                    print(f"❌ Feature merge failed: {e}")
+            try:
+                for glyph_name in ligature_font:
+                    glyph = ligature_font[glyph_name]
+                    
+                    # Only copy ligature glyphs (no Unicode mapping, likely composite names)
+                    if (glyph.unicode < 0 and 
+                        ('_' in glyph_name or 
+                         any(x in glyph_name.lower() for x in ['equal', 'greater', 'less', 'hyphen', 'arrow', 'liga']))):
+                        
+                        try:
+                            # Copy the glyph if it doesn't exist in target
+                            if glyph_name not in input_font:
+                                ligature_font.selection.select(glyph_name)
+                                ligature_font.copy()
+                                
+                                input_font.createChar(-1, glyph_name)
+                                input_font.selection.select(glyph_name)
+                                input_font.paste()
+                                
+                                ligature_count += 1
+                        except Exception:
+                            continue  # Skip problematic glyphs
+                
+                if ligature_count > 0:
+                    print(f"✅ Manually copied {ligature_count} ligature glyphs")
+                else:
+                    print("❌ No ligature glyphs could be copied")
                     return False
-            else:
-                print("❌ No ligature glyphs found in source font")
+                    
+            except Exception as e:
+                print(f"❌ Manual glyph copying failed: {e}")
                 return False
         
         # Preserve original font metadata
