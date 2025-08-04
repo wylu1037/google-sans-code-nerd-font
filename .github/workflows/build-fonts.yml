@@ -50,10 +50,13 @@ jobs:
         
     - name: Setup Ligaturizer
       run: |
-        # Download Ligaturizer files
-        curl -L https://raw.githubusercontent.com/ToxicFrog/ligaturizer/master/ligaturize.py -o ligaturize.py
+        # Download Ligaturizer dependency files
         curl -L https://raw.githubusercontent.com/ToxicFrog/ligaturizer/master/ligatures.py -o ligatures.py
         curl -L https://raw.githubusercontent.com/ToxicFrog/ligaturizer/master/char_dict.py -o char_dict.py
+        
+        # Use our fixed version of ligaturize.py to avoid TypeError
+        cp scripts/ligaturize-fixed.py ligaturize.py
+        chmod +x ligaturize.py
         
         # Download Fira Code for ligature source
         mkdir -p fonts/fira/distr/otf
@@ -83,9 +86,6 @@ jobs:
         done
         
         rm -rf temp FiraCode.zip
-        
-        # Make ligaturize script executable
-        chmod +x ligaturize.py
         
         echo "Ligaturizer setup complete"
         ls -la fonts/fira/distr/otf/
@@ -123,8 +123,7 @@ jobs:
           echo "Running Ligaturizer..."
           if fontforge -lang=py -script ligaturize.py "$font_file" \
             --output-dir="$LIGATURIZED_DIR" \
-            --prefix="GoogleSansCodeLig" \
-            --copy-character-glyphs; then
+            --prefix="GoogleSansCodeLig"; then
             echo "✅ Successfully ligaturized: $font_name"
           else
             echo "❌ Failed to ligaturize: $font_name"
