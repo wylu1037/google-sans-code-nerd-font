@@ -28,80 +28,68 @@ jobs:
       with:
         python-version: '3.11'
         
-    - name: Install FontForge and setup ligature environment
+    - name: Install FontForge for ligaturization
       run: |
-        # Install FontForge for ligature processing
-        echo "📦 Installing FontForge and dependencies..."
+        # Install FontForge and Python bindings for ligaturization step
         sudo apt-get update
-        sudo apt-get install -y fontforge python3-fontforge curl unzip python3-pip
+        sudo apt-get install -y fontforge python3-fontforge python3-dev
         
-        # Fix FontForge Python binding issues in Ubuntu 24.04
-        echo "🔧 Fixing FontForge Python bindings..."
-        
-        # Method 1: Try direct Python path setup
-        export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
-        
-        # Method 2: Create symbolic link if needed
-        PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-        FONTFORGE_PATH="/usr/lib/python3/dist-packages"
-        SITE_PACKAGES="/usr/local/lib/python${PYTHON_VERSION}/site-packages"
-        
-        # Find the actual FontForge module file (handles different naming conventions)
-        FONTFORGE_MODULE=$(find "$FONTFORGE_PATH" -name "fontforge*.so" | head -1)
-        PSMAT_MODULE=$(find "$FONTFORGE_PATH" -name "psMat*.so" | head -1)
-        
-        if [ -n "$FONTFORGE_MODULE" ] && [ ! -f "$SITE_PACKAGES/fontforge.so" ]; then
-          echo "Creating symbolic link for fontforge module..."
-          echo "Source: $FONTFORGE_MODULE"
-          sudo mkdir -p "$SITE_PACKAGES"
-          sudo ln -sf "$FONTFORGE_MODULE" "$SITE_PACKAGES/fontforge.so"
-          
-          if [ -n "$PSMAT_MODULE" ]; then
-            echo "Creating symbolic link for psMat module..."
-            echo "Source: $PSMAT_MODULE"
-            sudo ln -sf "$PSMAT_MODULE" "$SITE_PACKAGES/psMat.so"
-          fi
-        fi
-        
-        # Method 3: Alternative installation via pip if available
-        if ! python3 -c "import fontforge" 2>/dev/null; then
-          echo "Trying alternative FontForge installation..."
-          # Try installing fontforge-python if available
-          pip3 install fontforge-python 2>/dev/null || true
-        fi
+        # Set up PYTHONPATH to help find FontForge Python bindings
+        echo "PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages" >> $GITHUB_ENV
+        export PYTHONPATH=/usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages
         
         # Verify FontForge installation
         echo "🔍 Verifying FontForge installation..."
         fontforge --version
         
-        # Test Python import with detailed error information
-        echo "🐍 Testing FontForge Python import..."
+        # Test Python bindings with multiple methods
+        echo "🐍 Testing FontForge Python bindings..."
+        python3 -c "
+        try:
+            import fontforge
+            print('✅ FontForge Python bindings available via direct import')
+        except ImportError as e:
+            print(f'⚠️ Direct import failed: {e}')
+            import sys
+            sys.path.insert(0, '/usr/lib/python3/dist-packages')
+            try:
+                import fontforge
+                print('✅ FontForge Python bindings available via sys.path')
+            except ImportError as e2:
+                print(f'❌ FontForge Python bindings failed: {e2}')
+                print(f'Python path: {sys.path}')
+                exit(1)
+        "
         
-        # Ensure PYTHONPATH is available for import test
-        export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
+        # List FontForge related packages
+        echo "📦 Installed FontForge packages:"
+        dpkg -l | grep fontforge || echo "No FontForge packages found in dpkg"
         
-        if python3 -c "import fontforge; print('✅ FontForge Python module imported successfully')"; then
-          echo "FontForge Python bindings working correctly"
-        else
-          echo "⚠️ Initial FontForge import failed, trying sys.path method..."
-          if python3 -c "import sys; sys.path.insert(0, '/usr/lib/python3/dist-packages'); import fontforge; print('✅ FontForge imported with sys.path')"; then
-            echo "✅ FontForge working with sys.path method"
-          else
-            echo "❌ FontForge Python import failed - this is required for ligature processing"
-            echo "Python path: $PYTHONPATH"
-            echo "Available Python packages:"
-            find /usr/lib/python3* -name "*fontforge*" 2>/dev/null || true
-            find /usr/local/lib/python* -name "*fontforge*" 2>/dev/null || true
-            exit 1
-          fi
-        fi
+        # Check if fontforge module exists in expected locations
+        echo "🔍 Checking FontForge module locations:"
+        find /usr -name "*fontforge*" -type f 2>/dev/null | head -10 || echo "FontForge files not found"
         
-        # Set environment variable for subsequent steps
-        echo "PYTHONPATH=/usr/lib/python3/dist-packages:$PYTHONPATH" >> $GITHUB_ENV
-        echo "✅ PYTHONPATH configured for subsequent steps"
+    - name: Download Fira Code for ligatures
+      run: |
+        echo "📥 Downloading Fira Code for ligature extraction..."
+        mkdir -p temp/fira-code
         
+        # Download latest Fira Code release
+        curl -L "https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip" -o temp/FiraCode.zip
+        
+        # Extract Fira Code
+        unzip temp/FiraCode.zip -d temp/fira-code/
+        
+        # Find the Regular weight TTF for ligature extraction
+        find temp/fira-code -name "*Regular.ttf" -type f
+        
+        echo "✅ Fira Code downloaded successfully"
+        
+    - name: Install FontForge via Docker approach
+      run: |
         # GitHub Actions environment already has Docker pre-installed
-        echo "🐳 Setting up Docker environment..."
+        # No need to install Docker again
+        
         # Pull the official Nerd Font patcher Docker image
         docker pull nerdfonts/patcher:latest
         
@@ -109,209 +97,134 @@ jobs:
         docker --version
         docker images | grep nerdfonts
         
-    - name: Download and setup Ligaturizer and Fira Code
+    - name: Create output directory
       run: |
-        echo "📥 Downloading Ligaturizer and Fira Code..."
-        
-        # Create working directories
-        mkdir -p tools/ligaturizer
-        mkdir -p tools/firacode
-        mkdir -p output/ligaturized-fonts
         mkdir -p output/patched-fonts
+        mkdir -p output/ligaturized-fonts
         
-        # Download and setup Ligaturizer
-        cd tools/ligaturizer
-        curl -L https://raw.githubusercontent.com/ToxicFrog/ligaturizer/master/ligaturize.py -o ligaturize-original.py
-        
-        # Our fixed version is already in the repo
-        cp ../../scripts/ligaturize-fixed.py ./ligaturize.py
-        chmod +x ligaturize.py
-        
-        # Download Fira Code (source of ligatures)
-        cd ../firacode
-        echo "Downloading Fira Code v6.2..."
-        curl -L https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip -o FiraCode.zip
-        unzip -q FiraCode.zip
-        
-        # Ligaturizer expects OTF files, but Fira Code 6.2 only provides TTF
-        # Copy TTF files and rename to OTF for compatibility
-        if [ -d "ttf" ]; then
-          mkdir -p otf
-          for ttf_file in ttf/*.ttf; do
-            cp "$ttf_file" "otf/$(basename "$ttf_file" .ttf).otf"
-          done
-          echo "✅ Created OTF files from TTF for Ligaturizer compatibility"
-          ls -la otf/
-        else
-          echo "❌ TTF directory not found in Fira Code archive"
-          exit 1
-        fi
-        
-        cd ../..
-        echo "✅ Ligaturizer and Fira Code setup complete"
-        
-    - name: Apply ligatures to fonts
+    - name: Add ligatures to fonts
+      env:
+        PYTHONPATH: /usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages
       run: |
-        echo "🔗 Starting ligature processing..."
+        echo "🔗 Adding ligatures to Google Sans Code fonts..."
         
-        INPUT_DIR=$(realpath data/google-sans-code/static)
-        LIGATURIZED_DIR=$(realpath output/ligaturized-fonts)
-        FIRACODE_DIR=$(realpath tools/firacode/otf)
-        LIGATURIZER_SCRIPT=$(realpath tools/ligaturizer/ligaturize.py)
+        # Debug environment
+        echo "🐍 Python environment:"
+        echo "Python version: $(python3 --version)"
+        echo "PYTHONPATH: $PYTHONPATH"
         
-        echo "Input directory: $INPUT_DIR"
-        echo "Ligaturized output directory: $LIGATURIZED_DIR"
-        echo "Fira Code directory: $FIRACODE_DIR"
+        # Test FontForge import before processing
+        echo "🧪 Testing FontForge import..."
+        python3 -c "
+        import sys
+        print(f'Python path: {sys.path}')
+        try:
+            import fontforge
+            print('✅ FontForge import test successful')
+        except ImportError as e:
+            print(f'❌ FontForge import test failed: {e}')
+            exit(1)
+        "
         
-        # List input fonts
-        echo "Input fonts to ligaturize:"
-        ls -la "$INPUT_DIR"/*.ttf
+        # Find Fira Code Regular font for ligature source
+        FIRA_CODE_FONT=$(find temp/fira-code -name "*Regular.ttf" -type f | head -1)
+        echo "Using Fira Code font: $FIRA_CODE_FONT"
         
-        # Use Fira Code Regular as the ligature source
-        FIRA_SOURCE="$FIRACODE_DIR/FiraCode-Regular.otf"
-        if [ ! -f "$FIRA_SOURCE" ]; then
-          echo "❌ Fira Code Regular not found: $FIRA_SOURCE"
-          echo "Available Fira Code files:"
-          ls -la "$FIRACODE_DIR"/
+        if [ ! -f "$FIRA_CODE_FONT" ]; then
+          echo "❌ Error: Fira Code Regular font not found"
+          echo "Available files:"
+          find temp/fira-code -name "*.ttf" -type f
           exit 1
         fi
-        echo "Using ligature source: $FIRA_SOURCE"
         
-        # Function to ligaturize a single font
-        ligaturize_font() {
-          local input_font="$1"
-          local font_name=$(basename "$input_font")
-          local output_font="$LIGATURIZED_DIR/${font_name%.ttf}-Ligaturized.ttf"
-          
-          echo "🔗 Ligaturizing: $font_name"
-          
-          # Ensure PYTHONPATH is set for FontForge
-          export PYTHONPATH="/usr/lib/python3/dist-packages:$PYTHONPATH"
-          
-          # FontForge availability should have been verified in setup step
-          # Process the font and capture detailed output
-          if python3 "$LIGATURIZER_SCRIPT" "$input_font" "$FIRA_SOURCE" "$output_font" 2>&1; then
-            echo "✅ Successfully ligaturized: $font_name"
+        # Process each Google Sans Code font
+        processed_count=0
+        for font_file in data/google-sans-code/static/*.ttf; do
+          if [ -f "$font_file" ]; then
+            font_name=$(basename "$font_file")
+            echo "🔗 Processing: $font_name"
             
-            # Verify output file exists and has reasonable size
-            if [ -f "$output_font" ]; then
-              size=$(stat -c%s "$output_font")
-              echo "   Output size: $size bytes"
-              if [ $size -lt 100000 ]; then  # Less than 100KB is suspicious
-                echo "❌ Error: Output file too small ($size bytes) - ligaturization likely failed"
-                echo "   Expected size should be > 100KB for a valid font file"
-                return 1
+            # Create ligaturized version
+            output_file="output/ligaturized-fonts/${font_name}"
+            
+            if python3 scripts/ligaturize-fixed.py \
+              "$font_file" \
+              "$FIRA_CODE_FONT" \
+              "$output_file"; then
+              
+              if [ -f "$output_file" ]; then
+                file_size=$(stat -c%s "$output_file")
+                echo "✅ Successfully ligaturized: $font_name (${file_size} bytes)"
+                ((processed_count++))
+              else
+                echo "❌ Output file not created: $font_name"
+                exit 1
               fi
             else
-              echo "❌ Error: Output file not created: $output_font"
-              return 1
+              echo "❌ Failed to ligaturize: $font_name"
+              exit 1
             fi
-          else
-            echo "❌ Error: Ligaturization failed for $font_name"
-            echo "Debug info:"
-            python3 "$LIGATURIZER_SCRIPT" "$input_font" "$FIRA_SOURCE" "$output_font" || true
-            return 1
           fi
-        }
+        done
         
-        # Export function for parallel execution
-        export -f ligaturize_font
-        export LIGATURIZED_DIR FIRA_SOURCE LIGATURIZER_SCRIPT
+        echo "📊 Ligaturization summary:"
+        echo "Processed $processed_count fonts successfully"
+        ls -la output/ligaturized-fonts/
         
-        # Process fonts in parallel (2 concurrent jobs to avoid memory issues)
-        # Use xargs with --exit flag to stop on first failure
-        if find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 2 --exit bash -c 'ligaturize_font "$@"' _ {}; then
-          echo "✅ All fonts ligaturized successfully"
-        else
-          echo "❌ Ligaturization failed for one or more fonts"
-          echo "🔍 Checking partial results..."
-          ls -la "$LIGATURIZED_DIR"/ || true
-          exit 1
-        fi
-        
-        # Show ligaturization results
-        echo "📊 Ligaturized font files:"
-        ls -la "$LIGATURIZED_DIR"/
-        
-        ligaturized_count=$(find "$LIGATURIZED_DIR" -name "*.ttf" | wc -l)
-        input_count=$(find "$INPUT_DIR" -name "*.ttf" | wc -l)
-        echo "Generated $ligaturized_count ligaturized fonts from $input_count input fonts"
-        
-        if [ $ligaturized_count -eq 0 ]; then
-          echo "❌ No ligaturized fonts generated"
-          exit 1
-        fi
-        
-        if [ $ligaturized_count -ne $input_count ]; then
-          echo "❌ Mismatch: Expected $input_count fonts, got $ligaturized_count"
-          echo "Some fonts failed ligaturization"
-          exit 1
-        fi
-        
-    - name: Apply Nerd Font patches to ligaturized fonts
+    - name: Patch fonts using Docker
       run: |
-        echo "🎯 Starting Nerd Font icon processing..."
+        echo "🎨 Starting Nerd Font patching with Docker..."
         
-        # Set up absolute paths for Docker volumes
-        LIGATURIZED_DIR=$(realpath output/ligaturized-fonts)
+        # Set up absolute paths for Docker volumes - use ligaturized fonts as input
+        INPUT_DIR=$(realpath output/ligaturized-fonts)
         OUTPUT_DIR=$(realpath output/patched-fonts)
         
-        echo "Ligaturized fonts directory: $LIGATURIZED_DIR"
-        echo "Final output directory: $OUTPUT_DIR"
+        echo "Input directory: $INPUT_DIR"
+        echo "Output directory: $OUTPUT_DIR"
         
-        # List ligaturized fonts to process
-        echo "Ligaturized fonts to process:"
-        if ! ls -la "$LIGATURIZED_DIR"/*.ttf; then
-          echo "❌ No ligaturized fonts found - ligaturization step must have failed"
-          exit 1
-        fi
+        # List input fonts
+        echo "Input fonts to process:"
+        ls -la "$INPUT_DIR"/*.ttf
         
-        # Process ligaturized fonts using official Nerd Fonts patcher Docker image
+        # Process fonts using official Nerd Fonts patcher Docker image
         # Using --complete flag to include all icon sets as recommended by Nerd Fonts
         # Source: https://github.com/ryanoasis/nerd-fonts
         # This adds 3600+ icons from Font Awesome, Material Design, Octicons, etc.
-        # Function to process a single ligaturized font file
+        # Function to process a single font file
         process_font() {
           local font_file="$1"
           local font_name=$(basename "$font_file")
-          echo "🎯 Processing: $font_name"
+          echo "Processing: $font_name"
           
           # Extract style from filename (Bold, Light, Italic, etc.)
-          # Handle both original and ligaturized font names
-          local style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/-Ligaturized//g' | sed 's/\.ttf$//g')
+          local style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
           echo "Detected style: $style"
           
           # Create temporary directory for single font processing
           local temp_input_dir=$(mktemp -d)
           cp "$font_file" "$temp_input_dir/"
           
-          echo "Running Nerd Font patcher with ligature-enhanced font..."
-          
           # Process with custom family name but preserve style
-          if docker run --rm \
+          docker run --rm \
             -v "$temp_input_dir":/in \
             -v "$OUTPUT_DIR":/out \
             nerdfonts/patcher:latest \
             --complete \
             --quiet \
-            --name "Google\ Sans\ Code\ NF\ $style"; then
-            
-            echo "✅ Completed processing: $font_name -> Google Sans Code NF $style"
-          else
-            echo "❌ Failed to process: $font_name"
-            # Continue with other fonts even if one fails
-          fi
+            --name "Google\ Sans\ Code\ NF\ $style"
           
           # Clean up temporary directory
           rm -rf "$temp_input_dir"
+          
+          echo "Completed processing: $font_name -> Google Sans Code NF $style"
         }
         
         # Export function for parallel execution
         export -f process_font
         export OUTPUT_DIR
         
-        # Process ligaturized fonts in parallel (4 concurrent jobs for better performance)
-        find "$LIGATURIZED_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'process_font "$@"' _ {}
+        # Process fonts in parallel (4 concurrent jobs for better performance)
+        find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'process_font "$@"' _ {}
 
         # Show processing results
         echo "Processed font files:"
@@ -358,18 +271,15 @@ jobs:
         Google Sans Code Nerd Font with Ligatures
         =========================================
         
-        This package contains Google Sans Code Nerd Font versions with programming ligatures and 3600+ programming-related icons.
-        
-        ✨ Features:
-        - 150+ Programming ligatures from Fira Code (→, ⇒, ==, !=, etc.)
-        - 3600+ Programming icons from Nerd Fonts
-        - Complete icon set from Font Awesome, Material Design, Octicons, etc.
+        This package contains Google Sans Code Nerd Font versions with:
+        ✨ Programming ligatures (from Fira Code)
+        🎨 3600+ programming-related icons (Nerd Fonts)
         
         Font files included:
         - Support for all original weights (Light, Regular, Medium, SemiBold, Bold, ExtraBold)
         - Italic variants included
-        - Programming ligatures enabled
         - Complete Nerd Font icon set added
+        - Programming ligatures for better code readability
         
         Installation:
         macOS (Homebrew):
@@ -380,15 +290,15 @@ jobs:
         2. Double-click font files to install to system
         3. Use font family name "Google Sans Code NF" in applications
         
-        VS Code Configuration (with ligatures):
+        VS Code Configuration:
         {
           "editor.fontFamily": "'Google Sans Code NF'",
           "editor.fontLigatures": true
         }
         
-        Test ligatures:
-        -> => <-> == != <= >= && || !! 
-        += -= *= /= %= /* */ /** */ ///
+        Ligature Testing:
+        Test the ligatures with symbols like: -> => != <= >= === !==
+        Use the provided ligature-test.txt file for comprehensive testing.
         
         More info: https://github.com/$GITHUB_REPOSITORY
         EOL
@@ -396,14 +306,14 @@ jobs:
         echo "Build time: $(date)" >> patched-fonts/README.txt
         
         # Create release package
-        zip -r "GoogleSansCodeNerdFont-$(date +%Y%m%d-%H%M).zip" patched-fonts/
+        zip -r "GoogleSansCodeNerdFont-Ligatures-$(date +%Y%m%d-%H%M).zip" patched-fonts/
         
         echo "Release package created:"
         ls -la *.zip
         
-    - name: Upload google-sans-code-nerd-font
+    - name: Upload google-sans-code-nerd-font-ligatures
       uses: actions/upload-artifact@v4
       with:
-        name: google-sans-code-nerd-font
+        name: google-sans-code-nerd-font-ligatures
         path: output/patched-fonts/
         retention-days: 90

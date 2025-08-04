@@ -54,6 +54,30 @@ check_fonts() {
     fi
 }
 
+# Download Fira Code for ligatures
+setup_fira_code() {
+    echo "⬇️ Setting up Fira Code for ligatures..."
+    
+    mkdir -p tools
+    cd tools
+    
+    if [ ! -f "FiraCode-Regular.ttf" ]; then
+        echo "Downloading Fira Code..."
+        curl -L "https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip" -o FiraCode.zip
+        unzip -q FiraCode.zip
+        # Find and copy the Regular font
+        find . -name "*Regular.ttf" -type f -exec cp {} FiraCode-Regular.ttf \;
+    fi
+    
+    if [ ! -f "FiraCode-Regular.ttf" ]; then
+        echo "❌ Fira Code Regular font not found"
+        exit 1
+    fi
+    
+    echo "✅ Fira Code setup complete"
+    cd ..
+}
+
 # Download Font Patcher
 setup_patcher() {
     echo "⬇️ Setting up Nerd Font Patcher..."
@@ -78,9 +102,9 @@ setup_patcher() {
     cd ..
 }
 
-# Test processing of a single font file
-test_single_font() {
-    echo "🧪 Testing processing of a single font file..."
+# Test ligaturization
+test_ligaturize() {
+    echo "🔗 Testing ligaturization process..."
     
     # Find the first font file to test
     test_font=$(find data/google-sans-code/static -name "*.ttf" | head -1)
@@ -90,15 +114,56 @@ test_single_font() {
         exit 1
     fi
     
-    echo "Testing font: $(basename "$test_font")"
+    echo "Testing ligaturization with font: $(basename "$test_font")"
+    
+    mkdir -p test-output
+    
+    # Test ligaturization
+    output_ligaturized="test-output/$(basename "$test_font" .ttf)-ligaturized.ttf"
+    
+    echo "Executing: python3 scripts/ligaturize-fixed.py \"$test_font\" tools/FiraCode-Regular.ttf \"$output_ligaturized\""
+    
+    # Set PYTHONPATH for FontForge if needed
+    export PYTHONPATH="/usr/lib/python3/dist-packages:/usr/local/lib/python3/dist-packages:$PYTHONPATH"
+    
+    if python3 scripts/ligaturize-fixed.py "$test_font" tools/FiraCode-Regular.ttf "$output_ligaturized"; then
+        echo "✅ Ligaturization test successful"
+        
+        # Check output file
+        if [ -f "$output_ligaturized" ]; then
+            echo "✅ Ligaturized font created: $(basename "$output_ligaturized")"
+            ls -la "$output_ligaturized"
+        else
+            echo "❌ Ligaturized font file not created"
+            exit 1
+        fi
+    else
+        echo "❌ Ligaturization test failed"
+        exit 1
+    fi
+}
+
+# Test processing of a single font file
+test_single_font() {
+    echo "🧪 Testing Nerd Font patching..."
+    
+    # Use ligaturized font as input for Nerd Font patching
+    ligaturized_font=$(find test-output -name "*-ligaturized.ttf" | head -1)
+    
+    if [ -z "$ligaturized_font" ]; then
+        echo "❌ No ligaturized font file found"
+        exit 1
+    fi
+    
+    echo "Testing Nerd Font patching with: $(basename "$ligaturized_font")"
     
     mkdir -p test-output
     
     cd tools
-    echo "Executing: fontforge -script font-patcher \"$test_font\" --fontawesome --outputdir ../test-output"
+    echo "Executing: fontforge -script font-patcher \"$ligaturized_font\" --fontawesome --outputdir ../test-output"
     
     # Use only --fontawesome for a quick test to avoid long processing time with --complete
-    if fontforge -script font-patcher "../$test_font" --fontawesome --outputdir ../test-output --quiet; then
+    if fontforge -script font-patcher "../$ligaturized_font" --fontawesome --outputdir ../test-output --quiet; then
         echo "✅ Font processing test successful"
     else
         echo "❌ Font processing test failed"
@@ -122,6 +187,7 @@ test_single_font() {
 cleanup() {
     echo "🧹 Cleaning up test files..."
     rm -rf tools/FontPatcher.zip
+    rm -rf tools/FiraCode.zip
     rm -rf test-output
     echo "✅ Cleanup complete"
 }
@@ -132,7 +198,9 @@ main() {
     
     check_dependencies
     check_fonts
+    setup_fira_code
     setup_patcher
+    test_ligaturize
     test_single_font
     
     echo ""

@@ -2,26 +2,64 @@
 # Simplified Ligaturizer for Google Sans Code + Fira Code ligatures
 # Fixed for Python 3 compatibility and robustness
 
-import sys
-import os
 import argparse
+import os
+import sys
+
 
 def ligaturize_font(input_font_path, ligature_font_path, output_path):
     """Apply ligatures from ligature_font to input_font and save to output_path"""
     
     try:
         import fontforge
+
+        print("✅ FontForge imported successfully")
     except ImportError:
-        # Try alternative import methods
+        print("⚠️ Initial FontForge import failed, trying alternative methods...")
+
+        # Try multiple possible locations for FontForge Python bindings
         import sys
-        sys.path.insert(0, '/usr/lib/python3/dist-packages')
-        try:
-            import fontforge
-            print("✅ FontForge imported with sys.path method")
-        except ImportError:
-            print("❌ Error: FontForge Python module not available")
-            print("   Make sure python3-fontforge is installed")
-            print("   Also ensure PYTHONPATH includes /usr/lib/python3/dist-packages")
+
+        potential_paths = [
+            "/usr/lib/python3/dist-packages",
+            "/usr/local/lib/python3/dist-packages",
+            "/usr/lib/python3.11/dist-packages",
+            "/usr/lib/python3.10/dist-packages",
+            "/usr/lib/python3.9/dist-packages",
+        ]
+
+        fontforge_imported = False
+        for path in potential_paths:
+            if not fontforge_imported:
+                try:
+                    sys.path.insert(0, path)
+                    import fontforge
+
+                    print(f"✅ FontForge imported with path: {path}")
+                    fontforge_imported = True
+                    break
+                except ImportError:
+                    continue
+
+        if not fontforge_imported:
+            print(
+                "❌ FontForge Python import failed - this is required for ligature processing"
+            )
+            print("   Debugging info:")
+            print(f"   Python version: {sys.version}")
+            print(f"   Python path: {sys.path}")
+            print("   Install commands tried:")
+            print("   - sudo apt-get install fontforge python3-fontforge")
+            print("   - pip3 install fontforge-python (if available)")
+
+            # Last resort: try direct import with PYTHONPATH
+            import os
+
+            if "PYTHONPATH" in os.environ:
+                print(f"   PYTHONPATH: {os.environ['PYTHONPATH']}")
+            else:
+                print("   PYTHONPATH not set")
+
             raise ImportError("FontForge Python module is required for ligaturization")
     
     print(f"📂 Loading input font: {input_font_path}")
