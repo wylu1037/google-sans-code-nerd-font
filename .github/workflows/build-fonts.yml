@@ -63,16 +63,22 @@ jobs:
         # Using --complete flag to include all icon sets as recommended by Nerd Fonts
         # Source: https://github.com/ryanoasis/nerd-fonts
         # This adds 3600+ icons from Font Awesome, Material Design, Octicons, etc.
-        docker run --rm \
-          -v "$INPUT_DIR":/in:Z \
-          -v "$OUTPUT_DIR":/out:Z \
-          nerdfonts/patcher:latest \
-          --complete \
-          --quiet \
-          --careful \
-          --progressbars \
-          --name "Google Sans Code NF" \
-          /in/*.ttf
+        # Note: font-patcher processes one font file at a time
+        for font_file in "$INPUT_DIR"/*.ttf; do
+          if [ -f "$font_file" ]; then
+            echo "Processing: $(basename "$font_file")"
+            docker run --rm \
+              -v "$INPUT_DIR":/in:Z \
+              -v "$OUTPUT_DIR":/out:Z \
+              nerdfonts/patcher:latest \
+              --complete \
+              --quiet \
+              --careful \
+              --progressbars \
+              --name 'Google Sans Code NF' \
+              "/in/$(basename "$font_file")"
+          fi
+        done
 
         # Show processing results
         echo "Processed font files:"
