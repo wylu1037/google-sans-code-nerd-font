@@ -70,7 +70,6 @@ jobs:
           nerdfonts/patcher:latest \
           --complete \
           --quiet \
-          --quiet \
           --name "Google\ Sans\ Code\ NF"
 
         # Show processing results
