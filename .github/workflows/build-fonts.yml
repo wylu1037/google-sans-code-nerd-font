@@ -100,86 +100,188 @@ jobs:
         echo "Input directory: $INPUT_DIR"
         echo "Ligaturized output directory: $LIGATURIZED_DIR"
         
+        # Verify all dependencies before processing
+        echo "Verifying dependencies..."
+        echo "Ligaturizer scripts:"
+        ls -la ligaturize.py ligatures.py char_dict.py
+        echo "FiraCode source files:"
+        ls -la fonts/fira/distr/otf/
+        echo "Input fonts to process:"
+        ls -la "$INPUT_DIR"/*.ttf
+        
         # Function to add ligatures to a single font
         ligaturize_font() {
           local font_file="$1"
           local font_name=$(basename "$font_file")
-          echo "Adding ligatures to: $font_name"
+          echo "=== Processing: $font_name ==="
           
           # Extract style from filename for consistent naming
           local style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
           echo "Detected style: $style"
           
-          # Add ligatures using fontforge
-          fontforge -lang=py -script ligaturize.py "$font_file" \
+          # Add ligatures using fontforge with detailed output
+          echo "Running Ligaturizer..."
+          if fontforge -lang=py -script ligaturize.py "$font_file" \
             --output-dir="$LIGATURIZED_DIR" \
             --prefix="GoogleSansCodeLig" \
-            --copy-character-glyphs
-          
-          echo "Completed ligaturization: $font_name"
+            --copy-character-glyphs; then
+            echo "✅ Successfully ligaturized: $font_name"
+          else
+            echo "❌ Failed to ligaturize: $font_name"
+            return 1
+          fi
         }
         
         # Export function for parallel execution  
         export -f ligaturize_font
         export LIGATURIZED_DIR
         
-        # Process fonts in parallel for better performance
-        find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'ligaturize_font "$@"' _ {}
+        # Process fonts sequentially first to debug any issues
+        echo "Processing fonts sequentially for debugging..."
+        success_count=0
+        total_count=0
+        
+        for font_file in "$INPUT_DIR"/*.ttf; do
+          if [ -f "$font_file" ]; then
+            total_count=$((total_count + 1))
+            if ligaturize_font "$font_file"; then
+              success_count=$((success_count + 1))
+            fi
+          fi
+        done
+        
+        echo "=== Ligaturization Summary ==="
+        echo "Processed: $success_count/$total_count fonts"
         
         # Show ligaturized results
         echo "Ligaturized font files:"
-        ls -la "$LIGATURIZED_DIR"/
+        if [ -d "$LIGATURIZED_DIR" ]; then
+          ls -la "$LIGATURIZED_DIR"/
+          ligaturized_count=$(find "$LIGATURIZED_DIR" -name "*.ttf" | wc -l)
+          echo "Generated $ligaturized_count ligaturized font files"
+          
+          if [ $ligaturized_count -eq 0 ]; then
+            echo "❌ ERROR: No ligaturized fonts were generated!"
+            echo "This will cause the next step to fail."
+            exit 1
+          fi
+        else
+          echo "❌ ERROR: Ligaturized output directory does not exist!"
+          exit 1
+        fi
         
     - name: Patch fonts using Docker
       run: |
         echo "Starting Nerd Font patching with Docker..."
         
-        # Use ligaturized fonts as input for Nerd Font patcher
+        # Set up directories
         LIGATURIZED_DIR=$(realpath output/ligaturized-fonts)
+        ORIGINAL_DIR=$(realpath data/google-sans-code/static)
         OUTPUT_DIR=$(realpath output/patched-fonts)
         
         echo "Ligaturized input directory: $LIGATURIZED_DIR"
+        echo "Original input directory: $ORIGINAL_DIR"
         echo "Final output directory: $OUTPUT_DIR"
         
-        # List ligaturized fonts to process
-        echo "Ligaturized fonts to process:"
-        ls -la "$LIGATURIZED_DIR"/*.ttf
+        # Check which fonts to process
+        echo "=== Checking font availability ==="
+        ligaturized_count=0
+        original_count=0
         
-        # Function to process a single ligaturized font file
+        if [ -d "$LIGATURIZED_DIR" ]; then
+          ligaturized_count=$(find "$LIGATURIZED_DIR" -name "*.ttf" 2>/dev/null | wc -l)
+        fi
+        
+        if [ -d "$ORIGINAL_DIR" ]; then
+          original_count=$(find "$ORIGINAL_DIR" -name "*.ttf" 2>/dev/null | wc -l)
+        fi
+        
+        echo "Ligaturized fonts available: $ligaturized_count"
+        echo "Original fonts available: $original_count"
+        
+        # Determine input source
+        if [ $ligaturized_count -gt 0 ]; then
+          FONT_INPUT_DIR="$LIGATURIZED_DIR"
+          echo "✅ Using ligaturized fonts as input"
+          echo "Ligaturized fonts to process:"
+          ls -la "$LIGATURIZED_DIR"/*.ttf
+        elif [ $original_count -gt 0 ]; then
+          FONT_INPUT_DIR="$ORIGINAL_DIR"
+          echo "⚠️  Ligaturized fonts not available, using original fonts"
+          echo "Original fonts to process:"
+          ls -la "$ORIGINAL_DIR"/*.ttf
+        else
+          echo "❌ ERROR: No fonts available for processing!"
+          exit 1
+        fi
+        
+        # Function to process a single font file
         process_font() {
           local font_file="$1"
           local font_name=$(basename "$font_file")
-          echo "Processing: $font_name"
+          echo "=== Processing: $font_name ==="
           
           # Create temporary directory for single font processing
           local temp_input_dir=$(mktemp -d)
           cp "$font_file" "$temp_input_dir/"
           
           # Process with Nerd Font Patcher, maintaining ligature functionality
-          docker run --rm \
+          echo "Running Nerd Font Patcher..."
+          if docker run --rm \
             -v "$temp_input_dir":/in \
             -v "$OUTPUT_DIR":/out \
             nerdfonts/patcher:latest \
             --complete \
             --quiet \
-            --name "Google\ Sans\ Code\ NF"
+            --name "Google\ Sans\ Code\ NF"; then
+            echo "✅ Successfully patched: $font_name"
+          else
+            echo "❌ Failed to patch: $font_name"
+            # Clean up and continue with other fonts
+            rm -rf "$temp_input_dir"
+            return 1
+          fi
           
           # Clean up temporary directory
           rm -rf "$temp_input_dir"
-          
-          echo "Completed processing: $font_name"
         }
         
         # Export function for parallel execution
         export -f process_font
         export OUTPUT_DIR
         
-        # Process ligaturized fonts in parallel (4 concurrent jobs for better performance)
-        find "$LIGATURIZED_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'process_font "$@"' _ {}
+        # Process fonts sequentially for better error handling
+        echo "=== Processing fonts ==="
+        success_count=0
+        total_count=0
+        
+        for font_file in "$FONT_INPUT_DIR"/*.ttf; do
+          if [ -f "$font_file" ]; then
+            total_count=$((total_count + 1))
+            if process_font "$font_file"; then
+              success_count=$((success_count + 1))
+            fi
+          fi
+        done
+        
+        echo "=== Processing Summary ==="
+        echo "Successfully processed: $success_count/$total_count fonts"
 
         # Show processing results
         echo "Final processed font files:"
-        ls -la "$OUTPUT_DIR"/
+        if [ -d "$OUTPUT_DIR" ]; then
+          ls -la "$OUTPUT_DIR"/
+          final_count=$(find "$OUTPUT_DIR" -name "*.ttf" | wc -l)
+          echo "Generated $final_count final font files"
+          
+          if [ $final_count -eq 0 ]; then
+            echo "❌ ERROR: No fonts were generated!"
+            exit 1
+          fi
+        else
+          echo "❌ ERROR: Output directory does not exist!"
+          exit 1
+        fi
         
         # Debug: Check what fonts were actually generated
         echo "Checking generated font names:"
