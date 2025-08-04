@@ -70,7 +70,7 @@ jobs:
           nerdfonts/patcher:latest \
           --complete \
           --quiet \
-          --name Google\ Sans\ Code\ NF
+          --name "Google\ Sans\ Code\ NF"
 
         # Show processing results
         echo "Processed font files:"
