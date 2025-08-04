@@ -66,20 +66,26 @@ jobs:
         ls -la FiraCode.zip
         
         echo "Extracting FiraCode..."
-        unzip -q FiraCode.zip "otf/*" -d temp/
+        unzip -q FiraCode.zip -d temp/
         
-        # Check if extraction was successful
+        # Check if extraction was successful and find OTF files
         echo "Checking extracted files..."
         ls -la temp/
+        echo "Looking for OTF files..."
+        find temp -name "*.otf" | head -10
         
-        if [ -d "temp/otf" ]; then
-          mv temp/otf/* fonts/fira/distr/otf/
-        else
-          echo "Error: OTF directory not found in extracted files"
-          echo "Contents of temp directory:"
-          find temp -type f -name "*.otf" | head -10
-          # Try to find OTF files in any subdirectory
+        # Copy all OTF files to the destination directory
+        otf_count=$(find temp -name "*.otf" | wc -l)
+        echo "Found $otf_count OTF files"
+        
+        if [ $otf_count -gt 0 ]; then
           find temp -name "*.otf" -exec cp {} fonts/fira/distr/otf/ \;
+          echo "Successfully copied OTF files"
+        else
+          echo "Error: No OTF files found in the archive"
+          echo "Archive contents:"
+          find temp -type f | head -20
+          exit 1
         fi
         
         rm -rf temp FiraCode.zip
