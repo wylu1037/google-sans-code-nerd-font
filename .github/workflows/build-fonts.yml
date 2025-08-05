@@ -20,293 +20,282 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: Install FontForge for ligaturization
-      run: |
-        # Install FontForge and Python bindings for ligaturization step
-        sudo apt-get update
-        sudo apt-get install -y fontforge python3-fontforge python3-dev
-        
-        # Verify FontForge installation
-        echo "🔍 Verifying FontForge installation..."
-        fontforge --version
-        
-        # Test Python bindings with SYSTEM Python (not setup-python)
-        echo "🐍 Testing FontForge Python bindings with system Python..."
-        /usr/bin/python3 -c "
-        try:
-            import fontforge
-            print('✅ FontForge Python bindings available with system Python')
-            print(f'FontForge version: {fontforge.version()}')
-        except ImportError as e:
-            print(f'❌ FontForge import failed with system Python: {e}')
-            import sys
-            print(f'System Python path: {sys.path}')
-            exit(1)
-        "
-        
-        # Show Python versions for comparison
-        echo "📊 Python environment comparison:"
-        echo "System Python: $(/usr/bin/python3 --version)"
-        echo "Setup Python: $(python3 --version)"
-        
-        # List FontForge related packages
-        echo "📦 Installed FontForge packages:"
-        dpkg -l | grep fontforge
-        
-    - name: Download Fira Code for ligatures
-      run: |
-        echo "📥 Downloading Fira Code for ligature extraction..."
-        mkdir -p temp/fira-code
-        
-        # Download latest Fira Code release
-        curl -L "https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip" -o temp/FiraCode.zip
-        
-        # Extract Fira Code
-        unzip temp/FiraCode.zip -d temp/fira-code/
-        
-        # Find both TTF and OTF files, prefer OTF for better ligature support
-        echo "📋 Available Fira Code files:"
-        find temp/fira-code -name "*Regular.*" -type f
-        
-        echo "✅ Fira Code downloaded successfully"
-        
-    - name: Install FontForge via Docker approach
-      run: |
-        # GitHub Actions environment already has Docker pre-installed
-        # No need to install Docker again
-        
-        # Pull the official Nerd Font patcher Docker image
-        docker pull nerdfonts/patcher:latest
-        
-        # Verify Docker setup
-        docker --version
-        docker images | grep nerdfonts
-        
-    - name: Create output directory
-      run: |
-        mkdir -p output/patched-fonts
-        mkdir -p output/ligaturized-fonts
-        
-    - name: Add ligatures to fonts
-      run: |
-        echo "🔗 Adding ligatures to Google Sans Code fonts..."
-        
-        # Use system Python for ligaturization (where python3-fontforge is installed)
-        PYTHON_CMD="/usr/bin/python3"
-        echo "🐍 Using system Python: $($PYTHON_CMD --version)"
-        
-        # Test FontForge import before processing
-        echo "🧪 Testing FontForge import with system Python..."
-        $PYTHON_CMD -c "
-        try:
-            import fontforge
-            print('✅ FontForge import test successful')
-            print(f'FontForge version: {fontforge.version()}')
-        except ImportError as e:
-            print(f'❌ FontForge import test failed: {e}')
-            exit(1)
-        "
-        
-        # Find Fira Code Regular font for ligature source, prefer OTF over TTF
-        FIRA_CODE_FONT=$(find temp/fira-code -name "*Regular.otf" -type f | head -1)
-        if [ -z "$FIRA_CODE_FONT" ]; then
-          FIRA_CODE_FONT=$(find temp/fira-code -name "*Regular.ttf" -type f | head -1)
-        fi
-        echo "Using Fira Code font: $FIRA_CODE_FONT"
-        
-        if [ ! -f "$FIRA_CODE_FONT" ]; then
-          echo "❌ Error: Fira Code Regular font not found"
-          echo "Available files:"
-          find temp/fira-code -name "*.ttf" -type f
-          exit 1
-        fi
-        
-        # Process each Google Sans Code font
-        processed_count=0
-        for font_file in data/google-sans-code/static/*.ttf; do
-          if [ -f "$font_file" ]; then
-            font_name=$(basename "$font_file")
-            echo "🔗 Processing: $font_name"
-            
-            # Create ligaturized version
-            output_file="output/ligaturized-fonts/${font_name}"
-            
-            if $PYTHON_CMD scripts/ligaturize.py \
-              "$font_file" \
-              --ligature-font-file="$FIRA_CODE_FONT" \
-              --output-dir="$(dirname "$output_file")" \
-              --output-name="$(basename "$font_file" .ttf)"; then
-              
-              if [ -f "$output_file" ]; then
-                file_size=$(stat -c%s "$output_file")
-                echo "✅ Successfully ligaturized: $font_name (${file_size} bytes)"
-                processed_count=$((processed_count + 1))
-              else
-                echo "❌ Output file not created: $font_name"
-                exit 1
-              fi
-            else
-              echo "❌ Failed to ligaturize: $font_name"
-              exit 1
-            fi
-          fi
-        done
-        
-        echo "📊 Ligaturization summary:"
-        echo "Processed $processed_count fonts successfully"
-        ls -la output/ligaturized-fonts/
-        
-    - name: Patch fonts using Docker
-      run: |
-        echo "🎨 Starting Nerd Font patching with Docker..."
-        
-        # Set up absolute paths for Docker volumes - use ligaturized fonts as input
-        INPUT_DIR=$(realpath output/ligaturized-fonts)
-        OUTPUT_DIR=$(realpath output/patched-fonts)
-        
-        echo "Input directory: $INPUT_DIR"
-        echo "Output directory: $OUTPUT_DIR"
-        
-        # List input fonts
-        echo "Input fonts to process:"
-        ls -la "$INPUT_DIR"/*.ttf
-        
-        # Process fonts using official Nerd Fonts patcher Docker image
-        # Using --complete flag to include all icon sets as recommended by Nerd Fonts
-        # Source: https://github.com/ryanoasis/nerd-fonts
-        # This adds 3600+ icons from Font Awesome, Material Design, Octicons, etc.
-        # Function to process a single font file
-        process_font() {
-          local font_file="$1"
-          local font_name=$(basename "$font_file")
-          echo "Processing: $font_name"
-          
-          # Extract style from filename (Bold, Light, Italic, etc.)
-          local style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
-          echo "Detected style: $style"
-          
-          # Create temporary directory for single font processing
-          local temp_input_dir=$(mktemp -d)
-          cp "$font_file" "$temp_input_dir/"
-          
-          # Process with custom family name but preserve style
-          docker run --rm \
-            -v "$temp_input_dir":/in \
-            -v "$OUTPUT_DIR":/out \
-            nerdfonts/patcher:latest \
-            --complete \
-            --quiet \
-            --name "Google\ Sans\ Code\ NF\ $style"
-          
-          # Clean up temporary directory
-          rm -rf "$temp_input_dir"
-          
-          echo "Completed processing: $font_name -> Google Sans Code NF $style"
-        }
-        
-        # Export function for parallel execution
-        export -f process_font
-        export OUTPUT_DIR
-        
-        # Process fonts in parallel (4 concurrent jobs for better performance)
-        find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'process_font "$@"' _ {}
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        # Show processing results
-        echo "Processed font files:"
-        ls -la "$OUTPUT_DIR"/
-        
-        # Debug: Check what fonts were actually generated
-        echo "Checking generated font names:"
-        find "$OUTPUT_DIR" -name "*.ttf" -exec basename {} \;
-        
-    - name: Verify patched fonts
-      run: |
-        cd output/patched-fonts
-        echo "Verifying font file integrity..."
-        
-        font_count=$(find . -name "*.ttf" | wc -l)
-        echo "Generated font file count: $font_count"
-        
-        if [ $font_count -eq 0 ]; then
-          echo "Error: No font files generated"
-          echo "Checking for any output files:"
-          ls -la .
-          exit 1
-        fi
-        
-        # Check each font file size
-        for font in *.ttf; do
-          if [ -f "$font" ]; then
-            size=$(stat -c%s "$font")
-            echo "$font: ${size} bytes"
-            
-            # Font files should be larger than 1MB (will be larger with icons)
-            if [ $size -lt 1048576 ]; then
-              echo "Warning: $font may be incomplete (less than 1MB)"
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install FontForge via Docker approach
+        run: |
+          # GitHub Actions environment already has Docker pre-installed
+          # No need to install Docker again
+          
+          # Pull the official Nerd Font patcher Docker image
+          docker pull nerdfonts/patcher:latest
+          
+          # Verify Docker setup
+          docker --version
+          docker images | grep nerdfonts
+
+      - name: Create output directory
+        run: |
+          mkdir -p output/patched-fonts
+          mkdir -p output/ligaturized-fonts
+
+      - name: Setup Ligaturizer
+        run: |
+          echo "Setting up Ligaturizer for adding programming ligatures..."
+          
+          # Create tools directory
+          mkdir -p tools/ligaturizer
+          cd tools/ligaturizer
+          
+          # Download Ligaturizer files from GitHub
+          echo "Downloading ligaturize.py..."
+          curl -L "https://raw.githubusercontent.com/ToxicFrog/Ligaturizer/master/ligaturize.py" -o ligaturize.py
+          
+          echo "Downloading ligatures.py..."
+          curl -L "https://raw.githubusercontent.com/ToxicFrog/Ligaturizer/master/ligatures.py" -o ligatures.py
+          
+          echo "Downloading char_dict.py..." 
+          curl -L "https://raw.githubusercontent.com/ToxicFrog/Ligaturizer/master/char_dict.py" -o char_dict.py
+          
+          # Make scripts executable
+          chmod +x ligaturize.py
+          
+          echo "Ligaturizer setup complete"
+          cd ../..
+
+      - name: Download Fira Code for ligatures
+        run: |
+          echo "Downloading Fira Code fonts for ligature source..."
+          
+          cd tools
+          
+          # Download Fira Code release
+          curl -L "https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip" -o FiraCode.zip
+          
+          # Extract specific fonts we need
+          unzip -q FiraCode.zip "ttf/FiraCode-Regular.ttf" "ttf/FiraCode-Bold.ttf"
+          
+          # Verify files exist
+          ls -la ttf/
+          
+          echo "Fira Code download complete"
+          cd ..
+
+      - name: Ligaturize Google Sans Code fonts
+        run: |
+          echo "Adding programming ligatures to Google Sans Code fonts..."
+          
+          # Set up paths
+          INPUT_DIR=$(realpath data/google-sans-code/static)
+          OUTPUT_DIR=$(realpath output/ligaturized-fonts)
+          LIGATURIZER_DIR=$(realpath tools/ligaturizer)
+          FIRA_DIR=$(realpath tools/ttf)
+          
+          echo "Input directory: $INPUT_DIR"
+          echo "Output directory: $OUTPUT_DIR"
+          echo "Ligaturizer directory: $LIGATURIZER_DIR"
+          echo "Fira Code directory: $FIRA_DIR"
+          
+          # Function to ligaturize a single font
+          ligaturize_font() {
+            local font_file="$1"
+            local font_name=$(basename "$font_file")
+            echo "Ligaturizing: $font_name"
+          
+            # Determine Fira Code source based on font weight
+            local fira_source="$FIRA_DIR/FiraCode-Regular.ttf"
+            if [[ "$font_name" == *"Bold"* ]] || [[ "$font_name" == *"ExtraBold"* ]]; then
+              fira_source="$FIRA_DIR/FiraCode-Bold.ttf"
             fi
+          
+            # Extract style from filename for output naming
+            local style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
+            echo "Processing style: $style with source: $(basename "$fira_source")"
+          
+            # Change to ligaturizer directory to ensure imports work
+            cd "$LIGATURIZER_DIR"
+          
+            # Run ligaturization
+            python3 ligaturize.py "$font_file" \
+              --ligature-font-file="$fira_source" \
+              --output-dir="$OUTPUT_DIR" \
+              --output-name="GoogleSansCodeLig-$style"
+          
+            # Return to original directory
+            cd - > /dev/null
+          
+            echo "Completed ligaturizing: $font_name"
+          }
+          
+          # Export function for parallel execution
+          export -f ligaturize_font
+          export OUTPUT_DIR LIGATURIZER_DIR FIRA_DIR
+          
+          # Process fonts in parallel (4 concurrent jobs)
+          find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'ligaturize_font "$@"' _ {}
+          
+          # Show results
+          echo "Ligaturized font files:"
+          ls -la "$OUTPUT_DIR"/
+          
+          # Verify we have output files
+          ligaturized_count=$(find "$OUTPUT_DIR" -name "*.ttf" | wc -l)
+          echo "Generated $ligaturized_count ligaturized font files"
+          
+          if [ $ligaturized_count -eq 0 ]; then
+            echo "Error: No ligaturized fonts were generated"
+            exit 1
           fi
-        done
-        
-    - name: Create release archive
-      run: |
-        cd output
-        
-        # Create font info file
-        cat > patched-fonts/README.txt << 'EOL'
-        Google Sans Code Nerd Font with Ligatures
-        =========================================
-        
-        This package contains Google Sans Code Nerd Font versions with:
-        ✨ Programming ligatures (from Fira Code)
-        🎨 3600+ programming-related icons (Nerd Fonts)
-        
-        Font files included:
-        - Support for all original weights (Light, Regular, Medium, SemiBold, Bold, ExtraBold)
-        - Italic variants included
-        - Complete Nerd Font icon set added
-        - Programming ligatures for better code readability
-        
-        Installation:
-        macOS (Homebrew):
-          brew install font-google-sans-code-nerd
-        
-        Manual Installation:
-        1. Extract all .ttf files
-        2. Double-click font files to install to system
-        3. Use font family name "Google Sans Code NF" in applications
-        
-        VS Code Configuration:
-        {
-          "editor.fontFamily": "'Google Sans Code NF'",
-          "editor.fontLigatures": true
-        }
-        
-        Ligature Testing:
-        Test the ligatures with symbols like: -> => != <= >= === !==
-        Use the provided ligature-test.txt file for comprehensive testing.
-        
-        More info: https://github.com/$GITHUB_REPOSITORY
-        EOL
-        
-        echo "Build time: $(date)" >> patched-fonts/README.txt
-        
-        # Create release package
-        zip -r "GoogleSansCodeNerdFont-Ligatures-$(date +%Y%m%d-%H%M).zip" patched-fonts/
-        
-        echo "Release package created:"
-        ls -la *.zip
-        
-    - name: Upload google-sans-code-nerd-font
-      uses: actions/upload-artifact@v4
-      with:
-        name: google-sans-code-nerd-font
-        path: output/patched-fonts/
-        retention-days: 90
+
+      - name: Patch fonts using Docker
+        run: |
+          echo "Starting Nerd Font patching with Docker..."
+          
+          # Set up absolute paths for Docker volumes - now using ligaturized fonts as input
+          INPUT_DIR=$(realpath output/ligaturized-fonts)
+          OUTPUT_DIR=$(realpath output/patched-fonts)
+          
+          echo "Input directory (ligaturized fonts): $INPUT_DIR"
+          echo "Output directory: $OUTPUT_DIR"
+          
+          # List input fonts
+          echo "Ligaturized fonts to process:"
+          ls -la "$INPUT_DIR"/*.ttf
+          
+          # Process fonts using official Nerd Fonts patcher Docker image
+          # Using --complete flag to include all icon sets as recommended by Nerd Fonts
+          # Source: https://github.com/ryanoasis/nerd-fonts
+          # This adds 3600+ icons from Font Awesome, Material Design, Octicons, etc.
+          # Function to process a single font file
+          process_font() {
+            local font_file="$1"
+            local font_name=$(basename "$font_file")
+            echo "Processing: $font_name"
+          
+            # Extract style from ligaturized filename (GoogleSansCodeLig-Style.ttf)
+            local style=$(echo "$font_name" | sed 's/GoogleSansCodeLig-//g' | sed 's/\.ttf$//g')
+            echo "Detected style: $style"
+          
+            # Create temporary directory for single font processing
+            local temp_input_dir=$(mktemp -d)
+            cp "$font_file" "$temp_input_dir/"
+          
+            # Process with custom family name but preserve style
+            docker run --rm \
+              -v "$temp_input_dir":/in \
+              -v "$OUTPUT_DIR":/out \
+              nerdfonts/patcher:latest \
+              --complete \
+              --quiet \
+              --name "Google\ Sans\ Code\ NF\ $style"
+          
+            # Clean up temporary directory
+            rm -rf "$temp_input_dir"
+          
+            echo "Completed processing: $font_name -> Google Sans Code NF $style (with ligatures)"
+          }
+          
+          # Export function for parallel execution
+          export -f process_font
+          export OUTPUT_DIR
+          
+          # Process fonts in parallel (4 concurrent jobs for better performance)
+          find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'process_font "$@"' _ {}
+          
+          # Show processing results
+          echo "Processed font files:"
+          ls -la "$OUTPUT_DIR"/
+          
+          # Debug: Check what fonts were actually generated
+          echo "Checking generated font names:"
+          find "$OUTPUT_DIR" -name "*.ttf" -exec basename {} \;
+
+      - name: Verify patched fonts
+        run: |
+          cd output/patched-fonts
+          echo "Verifying font file integrity..."
+          
+          font_count=$(find . -name "*.ttf" | wc -l)
+          echo "Generated font file count: $font_count"
+          
+          if [ $font_count -eq 0 ]; then
+            echo "Error: No font files generated"
+            echo "Checking for any output files:"
+            ls -la .
+            exit 1
+          fi
+          
+          # Check each font file size
+          for font in *.ttf; do
+            if [ -f "$font" ]; then
+              size=$(stat -c%s "$font")
+              echo "$font: ${size} bytes"
+          
+              # Font files should be larger than 1MB (will be larger with icons)
+              if [ $size -lt 1048576 ]; then
+                echo "Warning: $font may be incomplete (less than 1MB)"
+              fi
+            fi
+          done
+
+      - name: Create release archive
+        run: |
+          cd output
+          
+          # Create font info file
+          cat > patched-fonts/README.txt << 'EOL'
+          Google Sans Code Nerd Font with Programming Ligatures
+          =====================================================
+          
+          This package contains Google Sans Code Nerd Font versions with:
+          • 3600+ programming-related icons from Nerd Fonts
+          • Programming ligatures from Fira Code (==, ->, <=, >=, etc.)
+          • Complete font family support
+          
+          Font files included:
+          - Support for all original weights (Light, Regular, Medium, SemiBold, Bold, ExtraBold)
+          - Italic variants included
+          - Complete Nerd Font icon set added
+          - Programming ligatures integrated
+          
+          Ligature Examples:
+          == != <= >= -> <- :: .. |> <| && || ++ -- /** */ <!-- -->
+          
+          Installation:
+          macOS (Homebrew):
+            brew install font-google-sans-code-nerd
+          
+          Manual Installation:
+          1. Extract all .ttf files
+          2. Double-click font files to install to system
+          3. Use font family name "Google Sans Code NF" in applications
+          
+          VS Code Configuration:
+          {
+            "editor.fontFamily": "'Google Sans Code NF'",
+            "editor.fontLigatures": true
+          }
+          
+          More info: https://github.com/$GITHUB_REPOSITORY
+          EOL
+          
+          echo "Build time: $(date)" >> patched-fonts/README.txt
+          
+          # Create release package
+          zip -r "GoogleSansCodeNerdFont-$(date +%Y%m%d-%H%M).zip" patched-fonts/
+          
+          echo "Release package created:"
+          ls -la *.zip
+
+      - name: Upload google-sans-code-nerd-font
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-sans-code-nerd-font
+          path: output/patched-fonts/
+          retention-days: 90
