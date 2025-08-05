@@ -2,7 +2,7 @@
 
 [English](README.md) | **中文**
 
-这是一个开源项目，为 Google Sans Code 字体添加 Nerd Font 图标支持。
+**Google Sans Code NF** - 基于 Google Sans Code 构建的完整编程字体，支持**编程连字**和**Nerd Font 图标**。
 
 ## 📖 关于
 
@@ -21,72 +21,22 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 
 ## 🚀 快速开始
 
-### 方法1：Homebrew（macOS）- 推荐
+### 方法1：Homebrew（macOS）- 即将支持！
 
 ```bash
-# 官方 Homebrew cask-fonts（首选）
-brew install font-google-sans-code-nerd
+# 官方 Homebrew cask-fonts（即将支持）
+# brew install font-google-sans-code-nerd
 
-# 备选：直接 cask 安装
-brew install --cask google-sans-code-nerd-font
+# 备选：直接 cask 安装（即将支持）
+# brew install --cask google-sans-code-nerd-font
 ```
 
 ### 方法2：下载预构建字体
 
-#### 选项A：GitHub Releases（推荐）
-1. 访问 [Releases](../../releases/latest) 页面
+1. 访问 [Releases](https://github.com/wylu1037/google-sans-code-nerd-font/releases/tag/v1.0.0) 页面
 2. 下载 `GoogleSansCodeNerdFont.zip`
 3. 解压并安装字体文件
 
-#### 选项B：GitHub Actions Artifacts
-1. 访问 [GitHub Actions](../../actions) 页面
-2. 点击最新的成功构建
-3. 在 "Artifacts" 部分下载 `google-sans-code-nerd-font`
-4. 解压并安装字体文件
-
-### 方法3：本地构建
-
-#### 前置要求
-
-- Python 3.7+
-- FontForge 和 python3-fontforge
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install fontforge python3-fontforge
-```
-
-**macOS:**
-```bash
-brew install fontforge
-```
-
-#### 构建步骤
-
-1. 克隆仓库：
-```bash
-git clone https://github.com/your-username/google-sans-code-nerd-font.git
-cd google-sans-code-nerd-font
-```
-
-2. 运行测试构建：
-```bash
-./test-build.sh
-```
-
-3. 或者手动构建全部：
-```bash
-mkdir -p tools output
-cd tools
-curl -L https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FontPatcher.zip -o FontPatcher.zip
-unzip FontPatcher.zip
-chmod +x font-patcher
-
-# 处理所有字体
-for font in ../data/google-sans-code/static/*.ttf; do
-  fontforge -script font-patcher "$font" --complete --outputdir ../output/
-done
-```
 
 ## 📁 项目结构
 
@@ -160,7 +110,8 @@ done
 **VS Code:**
 ```json
 {
-  "editor.fontFamily": "'Google Sans Code NF', 'Google Sans Code', monospace"
+  "editor.fontFamily": "Google Sans Code NF",
+  "editor.fontLigatures": true
 }
 ```
 

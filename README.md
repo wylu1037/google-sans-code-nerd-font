@@ -2,7 +2,7 @@
 
 **English** | [中文](README_zh.md)
 
-An open-source project that adds **programming ligatures** and **Nerd Font icon support** to Google Sans Code font.
+**Google Sans Code NF** - A feature-complete programming font based on Google Sans Code, enhanced with **programming ligatures** and **Nerd Font icon support**.
 
 ## 📖 About
 
@@ -34,72 +34,22 @@ The result is a feature-complete programming font with:
 
 ## 🚀 Quick Start
 
-### Method 1: Homebrew (macOS) - Recommended
+### Method 1: Homebrew (macOS) - Coming soon!
 
 ```bash
-# Official Homebrew cask-fonts (preferred)
-brew install font-google-sans-code-nerd
+# Official Homebrew cask-fonts (coming soon)
+# brew install font-google-sans-code-nerd
 
-# Alternative: Direct cask installation
-brew install --cask google-sans-code-nerd-font
+# Alternative: Direct cask installation (coming soon)
+# brew install --cask google-sans-code-nerd-font
 ```
 
 ### Method 2: Download Pre-built Fonts
 
-#### Option A: GitHub Releases (Recommended)
-1. Visit the [Releases](../../releases/latest) page
+1. Visit the [Releases](https://github.com/wylu1037/google-sans-code-nerd-font/releases/tag/v1.0.0) page
 2. Download `GoogleSansCodeNerdFont.zip`
 3. Extract and install font files
 
-#### Option B: GitHub Actions Artifacts
-1. Visit the [GitHub Actions](../../actions) page
-2. Click the latest successful build
-3. Download `google-sans-code-nerd-font` from "Artifacts" section
-4. Extract and install font files
-
-### Method 3: Local Build
-
-#### Prerequisites
-
-- Python 3.7+
-- FontForge and python3-fontforge
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install fontforge python3-fontforge
-```
-
-**macOS:**
-```bash
-brew install fontforge
-```
-
-#### Build Steps
-
-1. Clone the repository:
-```bash
-git clone https://github.com/your-username/google-sans-code-nerd-font.git
-cd google-sans-code-nerd-font
-```
-
-2. Run test build:
-```bash
-./test-build.sh
-```
-
-3. Or build manually:
-```bash
-mkdir -p tools output
-cd tools
-curl -L https://github.com/ryanoasis/nerd-fonts/releases/latest/download/FontPatcher.zip -o FontPatcher.zip
-unzip FontPatcher.zip
-chmod +x font-patcher
-
-# Process all fonts
-for font in ../data/google-sans-code/static/*.ttf; do
-  fontforge -script font-patcher "$font" --complete --outputdir ../output/
-done
-```
 
 ## 📁 Project Structure
 
@@ -180,7 +130,7 @@ After installing the fonts, set the font family in your terminal to:
 **VS Code:**
 ```json
 {
-  "editor.fontFamily": "'Google Sans Code NF', 'Google Sans Code', monospace",
+  "editor.fontFamily": "Google Sans Code NF",
   "editor.fontLigatures": true
 }
 ```
