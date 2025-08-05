@@ -37,7 +37,7 @@ jobs:
           
           # Verify FontForge Python support
           echo "Verifying FontForge Python installation..."
-          python3 -c "import fontforge; print('✅ FontForge Python support OK')"
+          /usr/bin/python3 -c "import fontforge; print('✅ FontForge Python support OK')"
           
           # GitHub Actions environment already has Docker pre-installed
           # Set up Docker for Nerd Font patching
@@ -131,8 +131,8 @@ jobs:
             # Change to ligaturizer directory to ensure imports work
             cd "$LIGATURIZER_DIR"
           
-            # Run ligaturization
-            python3 ligaturize.py "$font_file" \
+            # Run ligaturization using system Python with FontForge support
+            /usr/bin/python3 ligaturize.py "$font_file" \
               --ligature-font-file="$fira_source" \
               --output-dir="$OUTPUT_DIR" \
               --output-name="GoogleSansCodeLig-$style"
