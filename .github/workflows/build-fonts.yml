@@ -63,20 +63,24 @@ jobs:
           mkdir -p tools/ligaturizer
           cd tools/ligaturizer
           
-          # Download Ligaturizer files from GitHub
-          echo "Downloading ligaturize.py..."
-          curl -L "https://raw.githubusercontent.com/ToxicFrog/Ligaturizer/master/ligaturize.py" -o ligaturize.py
+          # Use our local fixed version instead of downloading the problematic ToxicFrog version
+          echo "Using local fixed ligaturize.py..."
+          cp ../../scripts/ligaturize.py ligaturize.py
           
-          echo "Downloading ligatures.py..."
-          curl -L "https://raw.githubusercontent.com/ToxicFrog/Ligaturizer/master/ligatures.py" -o ligatures.py
+          # Copy our local supporting files
+          echo "Using local char_dict.py..."
+          cp ../../scripts/char_dict.py char_dict.py
           
-          echo "Downloading char_dict.py..." 
-          curl -L "https://raw.githubusercontent.com/ToxicFrog/Ligaturizer/master/char_dict.py" -o char_dict.py
+          # Our simplified ligaturize.py doesn't need ligatures.py
+          # Create a dummy ligatures.py to avoid import errors if needed
+          echo "# Dummy ligatures.py - not used by simplified ligaturizer" > ligatures.py
           
           # Make scripts executable
           chmod +x ligaturize.py
           
-          echo "Ligaturizer setup complete"
+          echo "✅ Ligaturizer setup complete using local fixed version"
+          echo "📋 Files in ligaturizer directory:"
+          ls -la
           cd ../..
 
       - name: Download Fira Code for ligatures
@@ -150,6 +154,41 @@ jobs:
           # Process fonts in parallel (4 concurrent jobs)
           find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'ligaturize_font "$@"' _ {}
           
+          # Rename ligaturized fonts to clean format
+          echo "📝 Renaming ligaturized fonts to clean format..."
+          
+          cd "$OUTPUT_DIR"
+          for old_file in *.ttf; do
+            if [ -f "$old_file" ]; then
+              # Extract style from the messy filename
+              # Examples:
+              # LigaGoogleSansCodeLig-Bold-Bold.ttf -> GoogleSansCodeLig-Bold.ttf
+              # LigaGoogleSansCodeLig-BoldItalic-BoldItalic.ttf -> GoogleSansCodeLig-BoldItalic.ttf
+              
+              # Remove the "Liga" prefix and extract the style part
+              style_part=$(echo "$old_file" | sed 's/^Liga//' | sed 's/GoogleSansCodeLig-//' | sed 's/\.ttf$//')
+              
+              # Extract the actual style (first occurrence before the duplicate)
+              # For "Bold-Bold", we want just "Bold"
+              # For "BoldItalic-BoldItalic", we want just "BoldItalic"
+              clean_style=$(echo "$style_part" | sed 's/-.*$//')
+              
+              # Create the new filename
+              new_file="GoogleSansCodeLig-${clean_style}.ttf"
+              
+              # Only rename if the name would actually change
+              if [ "$old_file" != "$new_file" ]; then
+                echo "  📁 Renaming: $old_file -> $new_file"
+                mv "$old_file" "$new_file"
+              else
+                echo "  ✅ Already correctly named: $old_file"
+              fi
+            fi
+          done
+          
+          echo "✅ Font renaming completed"
+          cd - > /dev/null
+          
           # Show results
           echo "Ligaturized font files:"
           ls -la "$OUTPUT_DIR"/
@@ -189,7 +228,7 @@ jobs:
             echo "Processing: $font_name"
           
             # Extract style from ligaturized filename (GoogleSansCodeLig-Style.ttf)
-            local style=$(echo "$font_name" | sed 's/LigaGoogleSansCodeLig-//g' | sed 's/\.ttf$//g' | sed 's/^\(.*\)-\1$/\1/')
+            local style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
             echo "Detected style: $style"
           
             # Create temporary directory for single font processing
