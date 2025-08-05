@@ -32,6 +32,29 @@ The result is a feature-complete programming font with:
 - 💎 Pomicons
 - 🐧 Font Logos
 
+## ✨ Font Features Preview
+
+![Font Features](assets/features.png)
+
+*Google Sans Code NF showcases both programming ligatures and comprehensive Nerd Font icon support*
+
+
+**See the difference ligatures make in your TypeScript code:**
+
+<table>
+<tr>
+<td width="50%"><strong>Without Ligatures</strong></td>
+<td width="50%"><strong>With Ligatures</strong></td>
+</tr>
+<tr>
+<td><img src="assets/ts-no-ligatures.png" alt="TypeScript without ligatures" width="100%"/></td>
+<td><img src="assets/ts-with-ligatures.png" alt="TypeScript with ligatures" width="100%"/></td>
+</tr>
+</table>
+
+*Ligatures make code more readable by connecting related operators into meaningful symbols*
+
+
 ## 🚀 Quick Start
 
 ### Method 1: Homebrew (macOS) - Coming soon!
@@ -139,18 +162,6 @@ After installing the fonts, set the font family in your terminal to:
 ```vim
 set guifont=Google\ Sans\ Code\ NF:h12
 ```
-
-### Testing Ligatures
-
-Use the test file `scripts/ligature-test.txt` to verify ligature functionality:
-
-```bash
-# Test common programming ligatures
--> => <-> <=> == != <= >= && || !! 
-+= -= *= /= %= /* */ /** */ ///
-```
-
-If these appear as single connected symbols, ligatures are working correctly!
 
 ## 🔧 Troubleshooting
 

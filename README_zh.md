@@ -19,6 +19,28 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 - 💎 Pomicons
 - 🐧 Font Logos
 
+## ✨ 字体特性预览
+
+![字体特性](assets/features.png)
+
+*Google Sans Code NF 同时支持编程连字和全面的 Nerd Font 图标*
+
+
+**看看连字功能为你的 TypeScript 代码带来的改变：**
+
+<table>
+<tr>
+<td width="50%"><strong>不支持连字</strong></td>
+<td width="50%"><strong>支持连字</strong></td>
+</tr>
+<tr>
+<td><img src="assets/ts-no-ligatures.png" alt="不支持连字的 TypeScript 代码" width="100%"/></td>
+<td><img src="assets/ts-with-ligatures.png" alt="支持连字的 TypeScript 代码" width="100%"/></td>
+</tr>
+</table>
+
+*连字功能通过将相关操作符连接成有意义的符号，让代码更加易读*
+
 ## 🚀 快速开始
 
 ### 方法1：Homebrew（macOS）- 即将支持！

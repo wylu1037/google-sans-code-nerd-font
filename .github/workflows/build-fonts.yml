@@ -79,11 +79,12 @@ jobs:
           
             # Process with custom family name but preserve style
             docker run --rm \
-              -v "$temp_input_dir":/in \
-              -v "$OUTPUT_DIR":/out \
+              -v "$temp_input_dir":/in:Z \
+              -v "$OUTPUT_DIR":/out:Z \
               nerdfonts/patcher:latest \
               --complete \
               --quiet \
+              --careful \
               --name "Google\ Sans\ Code\ NF\ $style"
           
             # Clean up temporary directory
