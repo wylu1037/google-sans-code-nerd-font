@@ -28,10 +28,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install FontForge via Docker approach
+      - name: Install FontForge and setup Docker
         run: |
+          # Install system-level FontForge with Python bindings for Ligaturizer
+          echo "Installing FontForge with Python support..."
+          sudo apt-get update
+          sudo apt-get install -y fontforge python3-fontforge
+          
+          # Verify FontForge Python support
+          echo "Verifying FontForge Python installation..."
+          python3 -c "import fontforge; print('✅ FontForge Python support OK')"
+          
           # GitHub Actions environment already has Docker pre-installed
-          # No need to install Docker again
+          # Set up Docker for Nerd Font patching
+          echo "Setting up Docker for Nerd Font patching..."
           
           # Pull the official Nerd Font patcher Docker image
           docker pull nerdfonts/patcher:latest
