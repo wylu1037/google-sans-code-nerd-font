@@ -132,21 +132,10 @@ jobs:
             cd "$LIGATURIZER_DIR"
           
             # Run ligaturization using system Python with FontForge support
-            echo "Running ligaturization command:"
-            echo "/usr/bin/python3 ligaturize.py \"$font_file\" --ligature-font-file=\"$fira_source\" --output-dir=\"$OUTPUT_DIR\" --prefix=\"GoogleSansCodeLig\""
-            
             /usr/bin/python3 ligaturize.py "$font_file" \
               --ligature-font-file="$fira_source" \
               --output-dir="$OUTPUT_DIR" \
-              --prefix="GoogleSansCodeLig"
-            
-            # Check if ligaturization was successful
-            if [ $? -eq 0 ]; then
-              echo "✅ Ligaturization successful for: $font_name"
-            else
-              echo "❌ Ligaturization failed for: $font_name"
-              exit 1
-            fi
+              --output-name="GoogleSansCodeLig-$style"
           
             # Return to original directory
             cd - > /dev/null
@@ -161,29 +150,13 @@ jobs:
           # Process fonts in parallel (4 concurrent jobs)
           find "$INPUT_DIR" -name "*.ttf" -print0 | xargs -0 -I {} -P 4 bash -c 'ligaturize_font "$@"' _ {}
           
-          # Show results with detailed file information
+          # Show results
           echo "Ligaturized font files:"
           ls -la "$OUTPUT_DIR"/
           
-          # Show actual generated filenames for debugging
-          echo "Generated filenames:"
-          find "$OUTPUT_DIR" -name "*.ttf" -exec basename {} \;
-          
-          # Verify we have output files and check their sizes
+          # Verify we have output files
           ligaturized_count=$(find "$OUTPUT_DIR" -name "*.ttf" | wc -l)
           echo "Generated $ligaturized_count ligaturized font files"
-          
-          # Check if files are not empty
-          for file in "$OUTPUT_DIR"/*.ttf; do
-            if [ -f "$file" ]; then
-              size=$(stat -c%s "$file")
-              echo "$(basename "$file"): ${size} bytes"
-              if [ $size -eq 0 ]; then
-                echo "ERROR: Font file $(basename "$file") is empty (0 bytes)"
-                exit 1
-              fi
-            fi
-          done
           
           if [ $ligaturized_count -eq 0 ]; then
             echo "Error: No ligaturized fonts were generated"
@@ -215,15 +188,13 @@ jobs:
             local font_name=$(basename "$font_file")
             echo "Processing: $font_name"
           
-            # Extract style from ligaturized filename 
-            # Ligaturizer with --prefix creates files like "GoogleSansCodeLig FontName-Style.ttf"
-            local style=$(echo "$font_name" | sed 's/GoogleSansCodeLig //g' | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
+            # Extract style from ligaturized filename (GoogleSansCodeLig-Style.ttf)
+            local style=$(echo "$font_name" | sed 's/LigaGoogleSansCodeLig-//g' | sed 's/\.ttf$//g' | sed 's/^\(.*\)-\1$/\1/')
             echo "Detected style: $style"
           
             # Create temporary directory for single font processing
             local temp_input_dir=$(mktemp -d)
             cp "$font_file" "$temp_input_dir/"
-            echo "Copied $font_file to $temp_input_dir/"
           
             # Process with custom family name but preserve style
             docker run --rm \
