@@ -228,7 +228,7 @@ jobs:
             echo "Processing: $font_name"
           
             # Extract style from ligaturized filename (GoogleSansCodeLig-Style.ttf)
-            local style=$(echo "$font_name" | sed 's/GoogleSansCode-//g' | sed 's/\.ttf$//g')
+            local style=$(echo "$font_name" | sed 's/GoogleSansCodeLig-//g' | sed 's/\.ttf$//g')
             echo "Detected style: $style"
           
             # Create temporary directory for single font processing
