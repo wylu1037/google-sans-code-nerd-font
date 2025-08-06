@@ -73,80 +73,11 @@ The result is a feature-complete programming font with:
 2. Download `GoogleSansCodeNerdFont.zip`
 3. Extract and install font files
 
-
-## 📁 Project Structure
-
-```
-├── data/
-│   └── google-sans-code/          # Original Google Sans Code font files
-│       ├── static/                # Static font files (TTF)
-│       ├── GoogleSansCode-*.ttf   # Variable font files
-│       └── OFL.txt               # Open Font License
-├── .github/
-│   └── workflows/
-│       └── build-fonts.yml       # GitHub Actions auto-build config
-├── test-build.sh                 # Local test build script
-└── README.md
-```
-
-## 🤖 Automated Build
-
-This project uses GitHub Actions to automatically build fonts:
-
-- **Trigger**: Push to main branch or manual trigger
-- **Environment**: Ubuntu Latest + Docker  
-- **Process**: All static font files (12 weights)
-- **Output**: TTF format with complete Nerd Font icon set
-- **Artifacts**: 90-day retention with all built fonts and release packages
-
-### 🐳 Docker Solution
-
-To solve compatibility issues with `python3-fontforge` in Ubuntu 24.04, we adopted a Docker containerized solution:
-
-- Uses official `nerdfonts/patcher:latest` Docker image
-- Avoids FontForge Python binding version conflicts
-- Ensures build environment consistency and reliability
-- Supports complete `--complete` parameter with all icon sets
-
-### Build Process
-
-1. **Environment Setup**: Install Docker and pull Nerd Font Patcher image
-2. **Font Processing**: Use containerized Font Patcher to batch process fonts
-3. **Verification**: Ensure generated font file integrity
-4. **Package Upload**: Create release package and upload Artifacts
-
-## 💡 Font Features
-
-### Supported Weights
-
-- **Light** (300) + Italic
-- **Regular** (400) + Italic  
-- **Medium** (500) + Italic
-- **SemiBold** (600) + Italic
-- **Bold** (700) + Italic
-- **ExtraBold** (800) + Italic
-
-### Icon Support
-
-- ✅ 3600+ programming-related icons
-- ✅ Complete Powerline support
-- ✅ Perfect terminal and editor compatibility
-- ✅ Maintains excellent readability of original font
-
-### Ligature Support
-
-- ✅ 150+ programming ligatures from Fira Code
-- ✅ Arrow operators, comparison operators, and logic symbols
-- ✅ Automatic activation in supported editors
-- ✅ Preserves original font spacing and readability
-
 ## 🛠️ Usage Instructions
 
 ### Terminal Configuration
 
-After installing the fonts, set the font family in your terminal to:
-- **Font Name**: `Google Sans Code NF`
-- **Alternative Name**: `GoogleSansCode Nerd Font`
+After installing the fonts, set the font family in your terminal to: `Google Sans Code NF`
 
 ### Editor Configuration
 
@@ -162,28 +93,6 @@ After installing the fonts, set the font family in your terminal to:
 ```vim
 set guifont=Google\ Sans\ Code\ NF:h12
 ```
-
-## 🔧 Troubleshooting
-
-### Font Display Issues
-
-1. **Icons display as squares**: Confirm you installed the Nerd Font version
-2. **Font not taking effect**: Restart application or clear font cache
-3. **Spacing issues**: Use monospace version (Mono)
-4. **Ligatures not working**: Ensure `editor.fontLigatures: true` is set in your editor
-5. **Ligatures appear broken**: Verify you're using "Google Sans Code NF" font family name
-
-### Build Issues
-
-1. **FontForge import error**: Confirm python3-fontforge is installed
-2. **Out of memory**: Process font files separately, avoid batch processing
-3. **Permission issues**: Ensure scripts have execute permissions
-
-## 📄 License
-
-- **Original Font**: Google Sans Code uses [SIL Open Font License 1.1](data/google-sans-code/OFL.txt)
-- **Nerd Font Icons**: Respective original licenses
-- **Build Scripts**: MIT License
 
 ## 🤝 Contributing
 

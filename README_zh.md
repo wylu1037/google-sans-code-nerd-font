@@ -59,73 +59,11 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 2. 下载 `GoogleSansCodeNerdFont.zip`
 3. 解压并安装字体文件
 
-
-## 📁 项目结构
-
-```
-├── data/
-│   └── google-sans-code/          # 原版 Google Sans Code 字体文件
-│       ├── static/                # 静态字体文件 (TTF)
-│       ├── GoogleSansCode-*.ttf   # 可变字体文件
-│       └── OFL.txt               # Open Font License
-├── .github/
-│   └── workflows/
-│       └── build-fonts.yml       # GitHub Actions 自动构建配置
-├── test-build.sh                 # 本地测试构建脚本
-└── README.md
-```
-
-## 🤖 自动化构建
-
-本项目使用 GitHub Actions 自动构建字体：
-
-- **触发条件**: 推送到 main 分支或手动触发
-- **构建环境**: Ubuntu Latest + Docker  
-- **处理字体**: 所有静态字体文件 (12个字重)
-- **输出格式**: TTF 格式，包含完整 Nerd Font 图标集
-- **Artifacts**: 90天保留期，包含所有构建字体和发布包
-
-### 🐳 Docker 化解决方案
-
-为了解决 Ubuntu 24.04 中 `python3-fontforge` 的兼容性问题，我们采用了 Docker 容器化方案：
-
-- 使用官方 `nerdfonts/patcher:latest` Docker 镜像
-- 避免了 FontForge Python 绑定的版本冲突
-- 确保构建环境的一致性和可靠性
-- 支持完整的 `--complete` 参数，包含所有图标集
-
-### 构建流程
-
-1. **环境准备**: 安装 Docker 并拉取 Nerd Font Patcher 镜像
-2. **字体处理**: 使用容器化 Font Patcher 批量处理字体
-3. **验证检查**: 确保生成的字体文件完整性
-4. **打包上传**: 创建发布包并上传 Artifacts
-
-## 💡 字体特性
-
-### 支持的字重
-
-- **Light** (300) + Italic
-- **Regular** (400) + Italic  
-- **Medium** (500) + Italic
-- **SemiBold** (600) + Italic
-- **Bold** (700) + Italic
-- **ExtraBold** (800) + Italic
-
-### 图标支持
-
-- ✅ 3600+ 编程相关图标
-- ✅ 完整的 Powerline 支持
-- ✅ 终端和编辑器完美兼容
-- ✅ 保持原字体的优秀可读性
-
 ## 🛠️ 使用说明
 
 ### 终端配置
 
-安装字体后，在终端中设置字体族为：
-- **字体名称**: `Google Sans Code NF`
-- **备选名称**: `GoogleSansCode Nerd Font`
+安装字体后，在终端中设置字体族为：`Google Sans Code NF`
 
 ### 编辑器配置
 
@@ -141,26 +79,6 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 ```vim
 set guifont=Google\ Sans\ Code\ NF:h12
 ```
-
-## 🔧 故障排除
-
-### 字体显示问题
-
-1. **图标显示为方块**: 确认安装的是 Nerd Font 版本
-2. **字体不生效**: 重启应用程序或清除字体缓存
-3. **间距问题**: 使用等宽版本 (Mono)
-
-### 构建问题
-
-1. **FontForge 导入错误**: 确认安装了 python3-fontforge
-2. **内存不足**: 单独处理字体文件，避免批量处理
-3. **权限问题**: 确保脚本有执行权限
-
-## 📄 许可证
-
-- **原字体**: Google Sans Code 使用 [SIL Open Font License 1.1](data/google-sans-code/OFL.txt)
-- **Nerd Font 图标**: 各自原始许可证
-- **构建脚本**: MIT License
 
 ## 🤝 贡献
 
