@@ -47,8 +47,8 @@ The result is a feature-complete programming font with:
 <td width="50%"><strong>With Ligatures</strong></td>
 </tr>
 <tr>
-<td><img src="assets/ts-no-ligatures.png" alt="TypeScript without ligatures" width="100%"/></td>
-<td><img src="assets/ts-with-ligatures.png" alt="TypeScript with ligatures" width="100%"/></td>
+<td><img src="assets/ts-no-ligatures-v2.png" alt="TypeScript without ligatures" width="100%"/></td>
+<td><img src="assets/ts-with-ligatures-v2.png" alt="TypeScript with ligatures" width="100%"/></td>
 </tr>
 </table>
 

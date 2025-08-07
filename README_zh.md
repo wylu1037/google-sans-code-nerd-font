@@ -34,8 +34,8 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 <td width="50%"><strong>支持连字</strong></td>
 </tr>
 <tr>
-<td><img src="assets/ts-no-ligatures.png" alt="不支持连字的 TypeScript 代码" width="100%"/></td>
-<td><img src="assets/ts-with-ligatures.png" alt="支持连字的 TypeScript 代码" width="100%"/></td>
+<td><img src="assets/ts-no-ligatures-v2.png" alt="不支持连字的 TypeScript 代码" width="100%"/></td>
+<td><img src="assets/ts-with-ligatures-v2.png" alt="支持连字的 TypeScript 代码" width="100%"/></td>
 </tr>
 </table>
 
