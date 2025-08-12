@@ -43,7 +43,21 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 
 ## 🚀 快速开始
 
-### 方法1：Homebrew（macOS）- 即将支持！
+### 方法1：Arch Linux（AUR）
+
+从 AUR 安装：[`ttf-google-sans-code-nf`](https://aur.archlinux.org/packages/ttf-google-sans-code-nf)
+
+```bash
+# 使用 yay
+yay -S ttf-google-sans-code-nf
+
+# 使用 paru
+paru -S ttf-google-sans-code-nf
+```
+
+感谢 softexpert 创建并维护该 AUR 包。
+
+### 方法2：Homebrew（macOS）- 即将支持！
 
 ```bash
 # 官方 Homebrew cask-fonts（即将支持）
@@ -53,7 +67,7 @@ Google Sans Code 是 Google 推出的一款优秀的编程字体，但官方没�
 # brew install --cask google-sans-code-nerd-font
 ```
 
-### 方法2：下载预构建字体
+### 方法3：下载预构建字体
 
 1. 访问 [Releases](https://github.com/wylu1037/google-sans-code-nerd-font/releases/tag/v1.0.0) 页面
 2. 下载 `GoogleSansCodeNerdFont.zip`
@@ -97,6 +111,7 @@ set guifont=Google\ Sans\ Code\ NF:h12
 - [Google Sans Code 官方仓库](https://github.com/googlefonts/googlesans-code)
 - [Nerd Fonts 项目](https://github.com/ryanoasis/nerd-fonts)
 - [Font Patcher 文档](https://github.com/ryanoasis/nerd-fonts#font-patcher)
+- [AUR：ttf-google-sans-code-nf](https://aur.archlinux.org/packages/ttf-google-sans-code-nf) — 感谢 softexpert
 
 ---
 

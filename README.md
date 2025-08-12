@@ -57,7 +57,21 @@ The result is a feature-complete programming font with:
 
 ## 🚀 Quick Start
 
-### Method 1: Homebrew (macOS) - Coming soon!
+### Method 1: Arch Linux (AUR)
+
+Install from AUR: [`ttf-google-sans-code-nf`](https://aur.archlinux.org/packages/ttf-google-sans-code-nf)
+
+```bash
+# Using yay
+yay -S ttf-google-sans-code-nf
+
+# Using paru
+paru -S ttf-google-sans-code-nf
+```
+
+Thanks to softexpert for creating and maintaining the AUR package.
+
+### Method 2: Homebrew (macOS) - Coming soon!
 
 ```bash
 # Official Homebrew cask-fonts (coming soon)
@@ -67,7 +81,7 @@ The result is a feature-complete programming font with:
 # brew install --cask google-sans-code-nerd-font
 ```
 
-### Method 2: Download Pre-built Fonts
+### Method 3: Download Pre-built Fonts
 
 1. Visit the [Releases](https://github.com/wylu1037/google-sans-code-nerd-font/releases/tag/v1.0.0) page
 2. Download `GoogleSansCodeNerdFont.zip`
@@ -113,6 +127,7 @@ Issues and Pull Requests are welcome!
 - [Font Patcher Documentation](https://github.com/ryanoasis/nerd-fonts#font-patcher)
 - [Ligaturizer Project](https://github.com/ToxicFrog/ligaturizer)
 - [Fira Code Ligatures](https://github.com/tonsky/FiraCode)
+- [AUR: ttf-google-sans-code-nf](https://aur.archlinux.org/packages/ttf-google-sans-code-nf) — thanks to softexpert
 
 ---
 
