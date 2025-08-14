@@ -2,14 +2,9 @@
 
 ## Quick Installation
 
-### Official Homebrew Fonts (Recommended)
+### Official Homebrew Fonts
 ```bash
-brew install font-google-sans-code-nerd
-```
-
-### Alternative: Direct Cask
-```bash
-brew install --cask google-sans-code-nerd-font
+brew install font-google-sans-code-nf
 ```
 
 ## How it Works
@@ -20,12 +15,12 @@ This repository includes a Homebrew Cask formula that allows macOS users to inst
 
 1. **Downloads**: Automatically downloads the latest `GoogleSansCodeNerdFont.zip` from GitHub Releases
 2. **Installs**: Installs all 12 font variants to your system:
-   - GoogleSansCodeNerdFont-Regular.ttf
-   - GoogleSansCodeNerdFont-Bold.ttf
-   - GoogleSansCodeNerdFont-Light.ttf
-   - GoogleSansCodeNerdFont-Medium.ttf
-   - GoogleSansCodeNerdFont-SemiBold.ttf
-   - GoogleSansCodeNerdFont-ExtraBold.ttf
+   - GoogleSansCodeNF-Regular.ttf
+   - GoogleSansCodeNF-Bold.ttf
+   - GoogleSansCodeNF-Light.ttf
+   - GoogleSansCodeNF-Medium.ttf
+   - GoogleSansCodeNF-SemiBold.ttf
+   - GoogleSansCodeNF-ExtraBold.ttf
    - And their italic variants
 3. **Configures**: Makes the fonts available system-wide
 
@@ -39,7 +34,7 @@ Set your terminal font to:
 - **Family Name**: `Google Sans Code NF`
 
 ### Text Editors & IDEs
-- VS Code: `"editor.fontFamily": "'Google Sans Code NF'"`
+- VS Code: `"editor.fontFamily": "'Google Sans Code NF'"`k
 - Sublime Text: `"font_face": "Google Sans Code NF"`
 - Vim/Neovim: `set guifont=Google\ Sans\ Code\ NF:h12`
 
@@ -68,18 +63,18 @@ cask "font-google-sans-code-nerd-font" do
     strategy :github_latest
   end
 
-  font "GoogleSansCodeNerdFont-Bold.ttf"
-  font "GoogleSansCodeNerdFont-BoldItalic.ttf"
-  font "GoogleSansCodeNerdFont-ExtraBold.ttf"
-  font "GoogleSansCodeNerdFont-ExtraBoldItalic.ttf"
-  font "GoogleSansCodeNerdFont-Italic.ttf"
-  font "GoogleSansCodeNerdFont-Light.ttf"
-  font "GoogleSansCodeNerdFont-LightItalic.ttf"
-  font "GoogleSansCodeNerdFont-Medium.ttf"
-  font "GoogleSansCodeNerdFont-MediumItalic.ttf"
-  font "GoogleSansCodeNerdFont-Regular.ttf"
-  font "GoogleSansCodeNerdFont-SemiBold.ttf"
-  font "GoogleSansCodeNerdFont-SemiBoldItalic.ttf"
+  font "GoogleSansCodeNF-Bold.ttf"
+  font "GoogleSansCodeNF-BoldItalic.ttf"
+  font "GoogleSansCodeNF-ExtraBold.ttf"
+  font "GoogleSansCodeNF-ExtraBoldItalic.ttf"
+  font "GoogleSansCodeNF-Italic.ttf"
+  font "GoogleSansCodeNF-Light.ttf"
+  font "GoogleSansCodeNF-LightItalic.ttf"
+  font "GoogleSansCodeNF-Medium.ttf"
+  font "GoogleSansCodeNF-MediumItalic.ttf"
+  font "GoogleSansCodeNF-Regular.ttf"
+  font "GoogleSansCodeNF-SemiBold.ttf"
+  font "GoogleSansCodeNF-SemiBoldItalic.ttf"
 end
 ```
 
